@@ -1,0 +1,1988 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>銘傳國中資訊教育打字系統 檢定版v1.4</title>
+  <!-- 載入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 Google 字型 Noto Sans TC 與 JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <!-- 載入 html2canvas (用於成績證書截圖) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .font-mono-num {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* 英打專用 Arial 字體 */
+    .font-arial {
+      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+    }
+    /* 背景細緻微點紋理 */
+    .bg-grid-pattern {
+      background-image: radial-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    /* 隱藏滾動條但保持滾動 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* 中打：每行 20 格等寬自適應網格排版，強制保證最小格高防止坍塌 */
+    .line-20-grid {
+      display: grid;
+      grid-template-columns: repeat(20, minmax(24px, 1fr));
+      gap: 2.5px;
+      width: 100%;
+    }
+    .line-20-grid > div {
+      min-height: 40px;
+    }
+    @media (min-width: 640px) {
+      .line-20-grid {
+        gap: 3.5px;
+        grid-template-columns: repeat(20, minmax(28px, 1fr));
+      }
+      .line-20-grid > div {
+        min-height: 46px;
+      }
+    }
+    /* 英打：每行最多 50 格等寬自適應網格排版，最小安全寬度保障 */
+    .line-50-grid {
+      display: grid;
+      grid-template-columns: repeat(50, minmax(14px, 1fr));
+      gap: 1px;
+      width: 100%;
+    }
+    .line-50-grid > div {
+      min-height: 34px;
+    }
+    @media (min-width: 640px) {
+      .line-50-grid {
+        gap: 2px;
+        grid-template-columns: repeat(50, minmax(16px, 1fr));
+      }
+      .line-50-grid > div {
+        min-height: 40px;
+      }
+    }
+    /* 活動藍格呼吸燈動態 */
+    .active-glow {
+      box-shadow: 0 0 0 2px #2563eb, 0 0 14px rgba(37, 99, 235, 0.45);
+    }
+
+    /* 獨立實體分隔線：徹底杜絕線條切到或遮蔽下方文字 */
+    .cert-divider-line {
+      height: 1px !important;
+      width: 100% !important;
+      background-color: #e2e8f0 !important;
+      margin: 12px 0 10px 0 !important;
+    }
+
+    /* 特教生放大 250% 或小高度螢幕垂直壓縮保護 */
+    @media (max-height: 640px) {
+      .dash-card {
+        padding: 4px 8px !important;
+      }
+      .dash-num {
+        font-size: 1.25rem !important;
+        line-height: 1.25rem !important;
+      }
+      .dash-label {
+        font-size: 0.7rem !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col bg-grid-pattern relative overflow-x-hidden">
+
+  <!-- 凍結窗格置頂容器 (包含頂部標題、控制列與自適應儀表板) -->
+  <div id="stickyHeaderContainer" class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-sm transition-all duration-200">
+    
+    <!-- 頂部功能與控制列：清晰兩行排版 -->
+    <header class="max-w-7xl mx-auto px-2 sm:px-4 py-2 border-b border-slate-100/80">
+      
+      <!-- 第 1 行：左上角 LOGO、學校系統完整標題與「精簡面板」無障礙切換鈕 -->
+      <div class="flex items-center justify-between gap-3 pb-1.5">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-sky-500 flex flex-col items-center justify-center text-white shadow-md shadow-blue-500/25 border border-white/30 shrink-0">
+            <span class="text-[8px] font-black leading-tight tracking-wider text-blue-100">銘TYPE</span>
+            <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-sm sm:text-base font-black text-slate-900 tracking-tight whitespace-nowrap">銘傳國中資訊教育打字系統</h1>
+              <span class="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black tracking-wide bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm whitespace-nowrap">檢定版v1.4</span>
+            </div>
+            <p id="headerSubtitle" class="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">國際標準 NET CPM 檢定 ‧ 每行固定 20 字 ‧ 藍框直接打字 ‧ 就地修改</p>
+          </div>
+        </div>
+
+        <!-- 特教友善：一鍵切換精簡面板，特教生放大 250% 時可徹底釋放打字空間 -->
+        <button id="toggleDashboardCompactBtn" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold border border-slate-200 shadow-sm active:scale-95 transition shrink-0 whitespace-nowrap" title="放大頁面時收縮儀表板以擴大打字區">
+          <svg id="toggleDashIcon" class="w-3.5 h-3.5 text-blue-600 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+          </svg>
+          <span id="toggleDashText">精簡面板</span>
+        </button>
+      </div>
+
+      <!-- 第 2 行：放置在標題下一行的全功能操作列（中英切換、課次、同步、時間、字體、開始、結算、成績、重設） -->
+      <div class="flex items-center gap-1.5 sm:gap-2 pt-1 overflow-x-auto no-scrollbar flex-nowrap">
+        
+        <!-- 1. 中打 / 英打切換器 (分段膠囊按鈕，緊鄰課次左方) -->
+        <div class="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/80 shadow-inner shrink-0">
+          <button id="modeZhBtn" class="px-2.5 py-1 rounded text-xs font-black transition-all bg-white text-blue-700 shadow-sm whitespace-nowrap">
+            中打
+          </button>
+          <button id="modeEnBtn" class="px-2.5 py-1 rounded text-xs font-black transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap">
+            英打
+          </button>
+        </div>
+
+        <!-- 2. 課次選單 -->
+        <div class="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs shrink-0">
+          <label for="lessonSelect" class="text-slate-500 font-bold px-1.5 whitespace-nowrap">課次</label>
+          <select id="lessonSelect" class="bg-white rounded px-2 py-1 font-semibold text-slate-700 border-none shadow-sm focus:ring-1 focus:ring-blue-500 outline-none transition cursor-pointer max-w-[150px] sm:max-w-[200px] md:max-w-[240px] truncate text-xs">
+            <!-- 動態載入 -->
+          </select>
+        </div>
+
+        <!-- 3. 雲端同步按鈕 -->
+        <button id="syncSheetBtn" class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 text-xs font-bold active:scale-95 transition shrink-0 whitespace-nowrap" title="立即從 Google 試算表同步題目">
+          <svg id="syncIcon" class="w-3.5 h-3.5 text-sky-600 transition-transform duration-700 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+          </svg>
+          <span id="syncBtnText">同步</span>
+        </button>
+
+        <!-- 4. 測驗時間選單 -->
+        <div class="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs shrink-0">
+          <label for="timeSelect" class="text-slate-500 font-bold px-1.5 whitespace-nowrap">時間</label>
+          <select id="timeSelect" class="bg-white rounded px-1.5 py-1 font-semibold text-slate-700 border-none shadow-sm focus:ring-1 focus:ring-blue-500 outline-none transition cursor-pointer text-xs">
+            <option value="60">1 分</option>
+            <option value="180">3 分</option>
+            <option value="300" selected>5 分</option>
+            <option value="600">10 分</option>
+            <option value="0">自由</option>
+          </select>
+        </div>
+
+        <!-- 5. 字體大小調整 -->
+        <div class="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs font-bold text-slate-600 shrink-0">
+          <button id="fontSmBtn" class="px-2 py-0.5 rounded text-slate-500 hover:text-slate-900 transition">標</button>
+          <button id="fontMdBtn" class="px-2 py-0.5 rounded bg-white text-blue-600 shadow-sm transition">大</button>
+          <button id="fontLgBtn" class="px-2 py-0.5 rounded text-slate-500 hover:text-slate-900 transition">特</button>
+        </div>
+
+        <!-- 6. 開始 / 重新測驗按鈕 -->
+        <button id="startBtn" class="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/25 active:scale-95 transition shrink-0 whitespace-nowrap">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+          </svg>
+          <span id="startBtnText">開始</span>
+        </button>
+
+        <!-- 7. 提前結算按鈕 -->
+        <button id="finishBtn" disabled class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200 cursor-not-allowed transition shrink-0 whitespace-nowrap" title="時間倒數結束或全篇完成自動結算">
+          結算
+        </button>
+
+        <!-- 8. 查看本次成績按鈕 (防誤關常駐) -->
+        <button id="reopenModalBtn" class="hidden flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs shadow-sm transition shrink-0 whitespace-nowrap">
+          <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+          </svg>
+          <span>成績</span>
+        </button>
+
+        <!-- 9. 重設按鈕 -->
+        <button id="resetBtn" class="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition shrink-0" title="重設測驗">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+
+      </div>
+    </header>
+
+    <!-- 即時儀表板：常規模式 (4 方塊格) -->
+    <section id="fullDashboardSection" class="max-w-7xl mx-auto px-2 sm:px-4 pb-2 pt-1 transition-all duration-200">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        
+        <!-- 1. 剩餘時間 -->
+        <div class="dash-card bg-gradient-to-br from-indigo-50/90 to-blue-50/70 border border-indigo-100/90 rounded-xl p-2 sm:p-2.5 shadow-sm flex flex-col justify-between">
+          <div class="flex items-center justify-between shrink-0 mb-0.5">
+            <span class="dash-label text-xs sm:text-sm font-black text-indigo-900 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"></path>
+              </svg>
+              剩餘時間
+            </span>
+            <span id="timerStatusDot" class="w-2 h-2 rounded-full bg-slate-300"></span>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="timerDisplay" class="dash-num text-xl sm:text-2xl font-black font-mono-num text-indigo-600 leading-none">05:00</span>
+            <span class="text-[10px] font-bold text-indigo-400">min:sec</span>
+          </div>
+        </div>
+
+        <!-- 2. 每分鐘淨手速 (NET CPM / WPM) -->
+        <div class="dash-card bg-gradient-to-br from-blue-50/90 to-sky-50/70 border border-blue-100/90 rounded-xl p-2 sm:p-2.5 shadow-sm flex flex-col justify-between">
+          <div class="flex items-center justify-between shrink-0 mb-0.5">
+            <span class="dash-label text-xs sm:text-sm font-black text-blue-900 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span id="speedMetricTitle">每分淨字 (NET CPM)</span>
+            </span>
+            <span id="speedMetricBadge" class="text-[9px] sm:text-[10px] px-1 py-0.5 rounded bg-blue-100 font-bold text-blue-700">檢定標準</span>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="liveNetWpm" class="dash-num text-xl sm:text-2xl font-black font-mono-num text-blue-600 leading-none">0</span>
+            <span id="speedMetricUnit" class="text-[10px] font-bold text-blue-400">字/分 (扣錯)</span>
+          </div>
+        </div>
+
+        <!-- 3. 即時正確率 -->
+        <div class="dash-card bg-gradient-to-br from-emerald-50/90 to-teal-50/70 border border-emerald-100/90 rounded-xl p-2 sm:p-2.5 shadow-sm flex flex-col justify-between">
+          <div class="flex items-center justify-between shrink-0 mb-0.5">
+            <span class="dash-label text-xs sm:text-sm font-black text-emerald-900 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              即時正確率
+            </span>
+            <span class="text-[9px] sm:text-[10px] px-1 py-0.5 rounded bg-emerald-100 font-bold text-emerald-700">精準度</span>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="liveAccuracy" class="dash-num text-xl sm:text-2xl font-black font-mono-num text-emerald-600 leading-none">100</span>
+            <span class="text-[10px] font-bold text-emerald-500">%</span>
+          </div>
+        </div>
+
+        <!-- 4. 已鍵入字元 / 錯字數 -->
+        <div class="dash-card bg-gradient-to-br from-amber-50/90 to-orange-50/70 border border-amber-100/90 rounded-xl p-2 sm:p-2.5 shadow-sm flex flex-col justify-between">
+          <div class="flex items-center justify-between shrink-0 mb-0.5">
+            <span class="dash-label text-xs sm:text-sm font-black text-amber-900 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <span id="charCountLabel">已輸入 / 錯字</span>
+            </span>
+            <span class="text-[9px] sm:text-[10px] px-1 py-0.5 rounded bg-amber-100 font-bold text-amber-800">進度</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <div class="flex items-baseline gap-1">
+              <span id="liveTypedCount" class="dash-num text-xl sm:text-2xl font-black font-mono-num text-slate-800 leading-none">0</span>
+              <span class="text-[10px] font-bold text-slate-400">/ <span id="totalLessonChars">300</span> <span id="unitText">字</span></span>
+            </div>
+            <div class="text-[11px] font-bold text-rose-500">
+              錯: <span id="liveErrorCount" class="font-mono-num font-bold">0</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 精簡狀態膠囊列 (特教生高倍率縮放模式專用，高度僅 28px) -->
+    <section id="compactDashboardBar" class="hidden max-w-7xl mx-auto px-2 sm:px-4 py-1 border-t border-slate-100 bg-slate-50/80">
+      <div class="flex items-center justify-between text-xs font-bold gap-2 overflow-x-auto no-scrollbar">
+        <div class="flex items-center gap-1 text-indigo-700 whitespace-nowrap">
+          <span>時間:</span>
+          <span id="compactTimerDisplay" class="font-mono-num font-black">05:00</span>
+        </div>
+        <div class="flex items-center gap-1 text-blue-700 whitespace-nowrap">
+          <span>淨速:</span>
+          <span id="compactLiveNetWpm" class="font-mono-num font-black">0</span>
+          <span class="text-[10px]" id="compactSpeedUnit">字/分</span>
+        </div>
+        <div class="flex items-center gap-1 text-emerald-700 whitespace-nowrap">
+          <span>正確:</span>
+          <span id="compactLiveAccuracy" class="font-mono-num font-black">100%</span>
+        </div>
+        <div class="flex items-center gap-1 text-slate-700 whitespace-nowrap">
+          <span>進度:</span>
+          <span id="compactLiveTypedCount" class="font-mono-num font-black">0</span>
+          <span>/</span>
+          <span id="compactTotalChars" class="font-mono-num">300</span>
+        </div>
+        <div class="flex items-center gap-1 text-rose-600 whitespace-nowrap">
+          <span>錯字:</span>
+          <span id="compactLiveErrorCount" class="font-mono-num font-black">0</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- 打字主工作區 -->
+  <main class="flex-1 w-full mx-auto px-2 sm:px-4 py-3 flex flex-col items-center relative">
+    
+    <!-- 文章顯示與打字容器：設定為約 80% 視窗寬度並置中 -->
+    <div id="typingBoard" class="w-[94%] sm:w-[80%] max-w-5xl mx-auto space-y-3 pb-36 relative select-none">
+      <!-- 動態依中打 (20字) 或英打 (上限50字元不破字) 生成 -->
+    </div>
+
+    <!-- 開考指引卡片浮層 -->
+    <div id="startOverlay" class="absolute inset-0 bg-slate-900/30 backdrop-blur-[2px] z-30 flex justify-center items-start pt-3 sm:pt-6 px-3 transition-opacity duration-300">
+      <div class="bg-white rounded-2xl p-5 sm:p-7 shadow-2xl max-w-lg w-full border border-slate-200 text-center relative overflow-hidden transform transition-all duration-300 scale-100">
+        <div class="w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg shadow-blue-500/30 mb-3.5 border-2 border-white">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+          </svg>
+        </div>
+
+        <h2 id="overlayTitle" class="text-lg sm:text-xl font-black text-slate-900 mb-1">銘傳國中資訊教育打字檢定</h2>
+        <p id="overlaySubtitle" class="text-xs text-slate-500 font-medium mb-4">標準檢定規範 ‧ 每一錯扣 5 字 ‧ 檢定版v1.4 雲端題庫支援</p>
+
+        <!-- 規則指引 -->
+        <div id="overlayRulesGrid" class="grid grid-cols-2 gap-2 text-left text-xs bg-slate-50 p-3 rounded-xl border border-slate-200/80 mb-5">
+          <!-- 動態載入 -->
+        </div>
+
+        <button id="overlayStartBtn" class="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-base shadow-lg shadow-blue-500/30 active:scale-98 transition transform">
+          立即開始測驗（聚焦第 1 字）
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- 頁尾版權資訊 -->
+  <footer class="w-full py-4 text-center text-xs text-slate-500 font-medium border-t border-slate-200/80 bg-white/60 backdrop-blur-xs mt-auto">
+    <p>◎銘傳國中江健志老師&AI協作◎2026</p>
+  </footer>
+
+  <!-- 畫面上顯示的成績結算彈出視窗 (給使用者看的，UI 版面維持彈性) -->
+  <div id="resultModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div id="certificateCard" class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-4 sm:p-5 border border-slate-200 relative overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col justify-between">
+      
+      <!-- 右上角關閉按鈕 -->
+      <button id="closeModalXBtn" class="modal-interactive-btn absolute top-3 right-3 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition z-20" title="關閉返回">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <!-- 證書抬頭 -->
+      <div class="text-center pt-1 mb-2">
+        <div class="flex justify-center mb-2">
+          <div id="modalHeaderTag" class="bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold shadow-xs px-4 py-1.5 rounded-full" style="display: block; width: max-content; margin: 0 auto;">
+             <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <svg class="w-4 h-4 text-blue-600 shrink-0 block" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                </svg>
+                <span id="modalHeaderTagText" style="display: block; padding-top: 1px;">銘傳國中資訊教育中打檢定</span>
+             </div>
+          </div>
+        </div>
+        <h2 id="modalMainTitle" class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">打字檢定成果證書</h2>
+        <p class="text-xs text-slate-500 font-medium">國際標準規範 ‧ 每一錯扣 5 字 ‧ 檢定成果判定</p>
+      </div>
+
+      <!-- 核心成績大卡 -->
+      <div style="background-color: #f0f7ff; border: 1.5px solid #bfdbfe;" class="rounded-xl p-4 text-center mb-3">
+        <span id="modalSpeedLabel" class="text-xs font-black text-blue-900 tracking-wide block mb-2">每分鐘淨字數 (NET CPM)</span>
+        <div id="modalNetSpeed" style="padding: 4px 0; line-height: 1.2;" class="text-5xl font-black text-blue-600 font-mono-num mb-2 block">0</div>
+        
+        <div class="rating-badge-container">
+          <div id="modalRatingBadge" class="text-xs font-black tracking-wider shadow-sm text-white px-6 py-2 rounded-full bg-slate-700" style="display: block; width: max-content; margin: 0 auto;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+               <span id="badgeIconSlot" class="flex items-center justify-center shrink-0"></span>
+               <span id="badgeTextSlot" style="display: block; padding-top: 1px; font-size: 0.9rem;">再接再厲 ‧ 練習級</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 四項詳細數據統計方塊 -->
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <div class="bg-slate-50 rounded-lg p-2 border border-slate-200/80 text-center flex flex-col justify-center">
+          <span id="modalGrossLabel" class="text-[11px] font-bold text-slate-500 block mb-1">每分鐘毛字數 (Gross CPM)</span>
+          <div id="modalGrossSpeed" style="line-height: 1.2;" class="text-base sm:text-lg font-black font-mono-num text-slate-800 block">0</div>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-2 border border-slate-200/80 text-center flex flex-col justify-center">
+          <span id="modalAccuracyLabel" class="text-[11px] font-bold text-slate-500 block mb-1">正確率</span>
+          <div id="modalAccuracy" style="line-height: 1.2;" class="text-base sm:text-lg font-black font-mono-num text-emerald-600 block">100%</div>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-2 border border-slate-200/80 text-center flex flex-col justify-center">
+          <span id="modalCharsLabel" class="text-[11px] font-bold text-slate-500 block mb-1">輸入總字數</span>
+          <div id="modalTotalChars" style="line-height: 1.2;" class="text-base sm:text-lg font-black font-mono-num text-slate-800 block">0</div>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-2 border border-slate-200/80 text-center flex flex-col justify-center">
+          <span id="modalWrongPenalty" class="text-[11px] font-bold text-slate-500 block mb-1">錯字扣除 (×5)</span>
+          <div id="modalWrongPenaltyVal" style="line-height: 1.2;" class="text-base sm:text-lg font-black font-mono-num text-rose-500 block">-0 (0錯)</div>
+        </div>
+      </div>
+
+      <!-- 實體獨立分隔線 -->
+      <div class="cert-divider-line"></div>
+
+      <!-- 課次、時間模式與日期註腳 -->
+      <div class="mb-2 text-[11px] text-slate-600 leading-relaxed">
+        <div class="flex items-center justify-between mb-2 gap-2">
+          <div class="truncate flex-1 py-1">
+            測驗項目：<strong id="modalLessonName" class="text-slate-800 font-bold">中打 第 1 課</strong>
+          </div>
+          <div class="flex items-center gap-1 shrink-0 py-1">
+            <span>檢測時間：</span>
+            <div class="bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs rounded" style="display: block; padding: 3px 8px;">
+               <div style="display: flex; align-items: center; justify-content: center; line-height: 1;">
+                 <span id="modalDurationMode" style="display: block; padding-top: 1px;">5 分鐘</span>
+               </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between text-[10px] text-slate-400 pb-2 pt-1 leading-normal">
+          <span>測驗耗時：<strong id="modalActualDuration" class="text-slate-600 font-mono-num font-semibold inline-block">05:00</strong></span>
+          <span>檢定日期：<strong id="modalTestDate" class="text-slate-600 font-mono-num font-semibold inline-block">2026/10/04</strong></span>
+        </div>
+      </div>
+
+      <!-- 底部按鈕列 -->
+      <div class="flex items-center gap-2 pt-1">
+        <button id="copyCertBtn" class="modal-interactive-btn flex-1 py-2 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-500/25 active:scale-95 transition flex items-center justify-center gap-1 whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          <span>截圖複製</span>
+        </button>
+
+        <button id="downloadCertBtn" class="modal-interactive-btn flex-1 py-2 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-500/25 active:scale-95 transition flex items-center justify-center gap-1 whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>另存為 JPG</span>
+        </button>
+
+        <button id="closeModalBottomBtn" class="modal-interactive-btn py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs active:scale-95 transition whitespace-nowrap">
+          關閉
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 自訂文章彈出視窗 -->
+  <div id="customTextModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200">
+      <h3 id="customModalTitle" class="text-lg font-black text-slate-800 mb-2">輸入自訂測驗文章</h3>
+      <p id="customModalDesc" class="text-xs text-slate-500 mb-3">系統將自動以標準網格進行排版。</p>
+      <textarea id="customTextInput" rows="6" class="w-full p-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="請在此貼上文章內容..."></textarea>
+      <div class="flex justify-end gap-2 mt-4">
+        <button id="cancelCustomBtn" class="px-4 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold text-xs hover:bg-slate-200 transition">取消</button>
+        <button id="confirmCustomBtn" class="px-5 py-2 rounded-lg bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition">確定載入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 專屬 16:9 高畫質截圖畫布 (絕對定位強制鎖死尺寸，徹底根絕 html2canvas 變形 bug) -->
+  <div id="exportContainerWrapper" style="position: absolute; left: 0; top: 0; width: 1280px; height: 720px; overflow: hidden; z-index: -9999; opacity: 0.001; pointer-events: none;">
+    <div id="exportContainer" style="width: 1280px; height: 720px; background-color: #ffffff; position: relative; font-family: 'Noto Sans TC', sans-serif; box-sizing: border-box;">
+      
+      <!-- 頂部區：上移至 top: 40px，已移除外圍膠囊框 -->
+      <div style="position: absolute; top: 40px; left: 0; width: 1280px; text-align: center;">
+        <div style="font-size: 20px; font-weight: 800; color: #2563eb; margin-bottom: 12px; letter-spacing: 1px;">
+           <svg xmlns="http://www.w3.org/2000/svg" style="width: 22px; height: 22px; display: inline-block; vertical-align: middle; margin-right: 8px; margin-top: -3px;" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+           </svg>
+           <span id="exportHeaderTagText" style="display: inline-block; vertical-align: middle;">銘傳國中資訊教育中打檢定</span>
+        </div>
+        <h2 style="font-size: 60px; font-weight: 900; color: #0f172a; margin: 0; letter-spacing: 2px; line-height: 1.1;">打字檢定成果證書</h2>
+      </div>
+
+      <!-- 核心淨字數框：定位調整為 top: 250px，與上方標題保持安全間距 -->
+      <div style="position: absolute; top: 250px; left: 290px; width: 700px; height: 280px; background-color: #f0f7ff; border: 4px solid #bfdbfe; border-radius: 32px; text-align: center; box-sizing: border-box; padding-top: 24px;">
+        <span id="exportSpeedLabel" style="font-size: 28px; font-weight: 900; color: #1e3a8a; display: block; margin-bottom: 12px; letter-spacing: 1px;">每分鐘淨字數 (NET CPM)</span>
+        <div id="exportNetSpeed" style="font-size: 130px; font-weight: 900; color: #2563eb; font-family: 'JetBrains Mono', monospace; line-height: 1;">0</div>
+      </div>
+
+      <!-- 底部資訊：取消檢測時間的圓角方框，與其他項目統一為標準純文字對齊 -->
+      <div style="position: absolute; bottom: 40px; left: 70px; width: 1140px; border-top: 2px solid #e2e8f0; padding-top: 25px; box-sizing: border-box;">
+        <div style="display: inline-block; width: 560px; vertical-align: top; font-size: 24px; color: #475569; line-height: 1.8; text-align: left;">
+          <div>測驗項目：<strong id="exportLessonName" style="color: #1e293b; font-weight: 900;">中打 第 1 課</strong></div>
+          <div>測驗耗時：<strong id="exportActualDuration" style="color: #334155; font-family: 'JetBrains Mono', monospace; font-weight: 900;">05:00</strong></div>
+        </div><div style="display: inline-block; width: 560px; text-align: right; vertical-align: top; font-size: 24px; color: #475569; line-height: 1.8;">
+          <div>檢測時間：<strong id="exportDurationMode" style="color: #1e293b; font-weight: 900;">5 分鐘</strong></div>
+          <div>檢定日期：<strong id="exportTestDate" style="color: #334155; font-family: 'JetBrains Mono', monospace; font-weight: 900;">2026/10/04</strong></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 提示氣泡 (Toast) -->
+  <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900/90 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl shadow-xl z-50 pointer-events-none transition-all duration-300 opacity-0 translate-y-3">
+    提示訊息
+  </div>
+
+  <script>
+    // 中打 8 大經典國中題庫
+    const ZH_LESSON_TEXTS = {
+      '1': '生活是一幅色彩斑斕的壯麗畫卷，我們每天都在用敏銳目光諦聽心靈細語，端詳周遭晨昏景致的更迭變化。鳥兒在枝頭啁啾鳴囀，微風在水面拂過漣漪；那些看似尋常的草木風光，無處不是大自然精妙的餽贈！「萬物靜觀皆自得，四時佳興與人同。」古人的詩句啟迪著我們：恬澹寧靜方為心靈的真諦。徜徉在悠閒的林間小徑，放下內心的浮躁與名利牽絆；唯有懂得返璞歸真、熱愛眼前的每一瞬時光，方能體會生活的純粹真味。生命的意義何須汲汲營營追逐虛妄繁華？當我們學會用包容且豁達的心胸去涵濡身邊的萬事萬物，縱使身處逆境與狂風驟雨，心靈也能在不斷的淬鍊中綻放芬芳。願我們在時光長河中昂首闊步，將歲月鐫刻成一曲雋永的交響樂，譜寫出無愧於本心的華章！',
+      '2': '「見賢思齊焉，見不賢而內自省也。」先哲這句流傳千古的箴言，如同一面澄澈明鏡，時刻惕勵著我們在茫茫塵世中端正言行。人非聖賢，孰能無過？在日常處世之中，面對過失倘若一味推諉、咎責於他人，內心必將陷入惶悚與狹隘的泥淖；反之，若能時時反求諸己、誠懇憬悟並勇於改悛，便能將每一次跌倒的挫折轉化為向上攀升的砥礪之石。古人常言：「苟日新，日日新，又日新。」修養自身品德絕非一蹴可幾的易事，需要如同攀登險峻高山般，披荊斬棘、跨越心中的傲慢與惰性藩籬。唯有以史為鑑、嚴以律己，在漫長的跋涉中不斷拂拭心靈的瑕疵與塵埃，以謙遜砥礪志節；方能在廣袤的人生藍圖中，書寫出斐然成章且無愧於心的壯麗篇章，讓心靈永保澄澈明淨，在歲月淘洗中益發沉穩篤定，成就卓絕不凡的豁達襟懷，邁向璀璨新里程！',
+      '3': '當代資訊科技以一日千里的驚人速度顛覆了人類既有的生活模式，人工智慧的浪潮更是排山倒海而來，席捲了全球各大文明角落。面對這股浩瀚莫測的時代巨浪，我們一方面讚嘆演算法與數據算力帶來的極致便利，另一方面卻也隱隱擔憂心靈是否會淪為冰冷代碼的奴隸與桎梏。鍵盤上的敲擊聲在寂靜深夜中起落，螢幕的微光映照著無數深邃卻日漸疏離的眼眸；社群網路上的虛擬讚聲固然喧囂熱絡，卻往往推波助瀾了精神世界的空虛與浮躁。身處科技昌明的洪流之中，我們切莫遺忘身為人類所獨有的溫度與同理心：那一抹澄澈的微笑、一句溫暖的關切、一段在暮色中緊緊相依的漫步。科技應當是拓展視野的舟楫，而非蠶食鯨吞人性的牢籠；唯有守護心中的深情與道義，明辨是非曲直，我們方能真正駕馭智慧巨輪，在數位時代浪潮中綻放文明的燦爛光芒，不為外物所役，堅守高潔心靈，譜寫科技與人文交輝相映的壯麗史詩！',
+      '4': '走進大自然的懷抱，巍峨高聳的山巒頂天立地，以其峻拔崢嶸的姿態教導我們何謂沉穩厚重與堅毅不屈；深壑幽谷中淙淙流淌的清泉，則以其潺潺不息的活力，啟示我們面對險阻時當以柔克剛、順應萬變。春日百花競相綻放，展現奼紫嫣紅的生機；夏夜繁星點綴穹蒼，閃耀著深邃莫測的光輝；秋楓在層巒疊嶂中染上一抹醉人的緋紅，詮釋著成熟與蛻變的靜美；冬雪則以無垠的素白覆蓋大地，孕育著下一輪磅礴的甦醒。大自然從不誇耀自己的偉岸與恩澤，卻以枯榮遞嬗的永恆節律，默默滋養著大地上的芸芸眾生。當我們放慢腳步，佇立在蒼茫天地之間，靜謐聆聽落葉隨風飄零的脆響，心靈深處的雜質便能被洗滌淨化；我們終將深切領悟，唯有順應天地自然的造化、常懷敬畏之情，方能在有限的生命中體現宏偉的大千氣象。願我們尊崇生靈、熱愛草木，在四時更迭中汲取大自然無窮的智慧養分，以謙卑胸襟擁抱萬物，於壯闊天地間涵養頂天立地的浩然正氣，成就寧靜致遠的豁達生命！',
+      '5': '古今中外無數賢哲無不將閱讀視為開啟智慧之門的玄牖。沉浸在浩瀚卷帙之中，我們得以穿越千年時空的阻隔，與歷代聖賢促膝長談、剖析天理人情。每一部經典都是一座深邃幽微的思想寶庫，字裡行間蘊藏著先人探驪得珠的深邃見解。咀嚼書香，不僅能拓寬我們狹隘的眼界，更能洗滌精神的貧瘠與荒蕪。然而，求知之道貴在專精與慎思，切忌囫圇吞棗、淺嚐輒止；唯有將所學融會貫通，並在日常實踐中反覆印證與辨析，知識才能化為照亮前行的深邃智慧。古人云：「學而不思則罔，思而不學則殆。」這正是告誡我們在求知路上必須手腦並用、鍥而不捨。博覽群書以致廣大，格物致知以盡精微；當我們在字裡行間尋幽訪勝，心靈便能在書香涵養中沉潛蓄勢。讀書如同一場永無止境的奇妙探險，它賦予我們獨立思辨的羽翼，在紛擾塵世中永保清醒，照亮心靈幽微。願我們皆能以書籍為梯，在漫長的求索旅途中不畏風雨險阻，擷取甘冽的真理泉源；以博洽沉穩之姿覽盡天下壯闊美景，在思想的高峰上昂首挺立，開創卓絕不凡的人生新格局，讓智慧的光芒永不熄滅！',
+      '6': '人世間最真摯且動人心弦的力量，莫過於那份蘊藏於尋常市井之中的深厚人情與溫暖。那不是浮誇的繁文縟節，亦非矯揉造作的客套寒暄，而是風雨中路人及時遞來的一柄傘，或是暮色中窗口為夜歸遊子點亮的一盞溫馨燈火。這份溫暖源自內心深處油然而生的惻隱與慈愛，猶如初春融雪的煦陽，能融化最堅硬冷酷的心扉。在踽踽獨行的漫長歲月裡，我們或曾遭遇挫敗與欺瞞，但在同儕肝膽相照的扶持下，在師長舐犢情深的循循善誘中，那些傷痛終將化為成長的甘霖。正如古語所云：「投我以木桃，報之以瓊瑤。」當每個人都願意解開心防、相互寬宥與憐恤，社會便能構築起休戚與共的情感紐帶；這股樸實醇厚的溫情，必將穿越歲月的嚴寒霜雪，化作人世間最璀璨動人的永恆光輝。生活因愛而充盈，生命因善而豐沛。在風雨同舟的歲月裡，相互撫慰、相濡以沫的真情，是支撐我們度過困厄的中流砥柱。願我們常懷敦厚眷顧之心，以善意點亮幽暗，在無涯世路中傳遞真情，讓慈悲與溫暖如春風般撫慰人心，化作永不褪色的動人篇章！心手相牽，彼此守護；縱歷漫長風霜，這份綿長深厚的世間真情，亦能化為融暖陽，照亮無垠蒼生！',
+      '7': '青春是一首意氣風發的拓荒史詩，充滿了破曉曙光的無限希冀與壯懷激烈的冒險精神。正值豆蔻與及冠年華的我們，胸中湧動著馳騁千里的騏驥雄心，渴望在廣闊無垠的天地間展翅翱翔。然而，築夢之路絕非一馬平川，前方常有泥濘坎坷的沼澤與刺骨冰冷的荊棘。面對挫折與迷惘，倘若因一時的躊躇而裹足不前，便只能在韶華虛度中留下抱憾終生的嘆息。唯有以傲骨為盾、以堅毅為刃，在風霜雪雨的磨礪中淬鍊出矢志不渝的信念，才能完成心靈的淬火與蛻變。白駒過隙，光陰如駿馬奔馳般不捨晝夜；我們當珍惜這段風華正茂的黃金歲月，勇敢搴芳攬秀，以筆墨揮灑豪情，以雙足丈量大地，用辛勤的汗水澆灌理想的種子，讓青春在奮鬥的洗禮下結出最豐碩斑斕的果實。青春崢嶸，勇毅篤行；每一次搏擊風浪的吶喊，都是生命向命運發出的鏗鏘誓言。當我們奮發蹈厲、乘風破浪，以百折不撓之志勇往直前，便能刺破迷霧陰霾，翱翔於萬里晴空之上。願少年皆懷鴻鵠之志，披星戴月而不改其度，在時代的長卷中揮灑熱血激情，鑄就永不褪色的壯美青春榮光！不負韶華，不負本心！讓我們以最為昂揚姿態迎向每一個黎明破曉，在壯闊寰宇間縱橫馳騁，綻放生命極致光彩，書寫無愧時代的青春華章！',
+      '8': '生命宛如一首跌宕起伏的宏偉交響樂章，既有平疇迤邐的悠揚恬靜，亦有峭壁巉巖的驚濤駭浪。我們在歲月的長河中跋涉前行，經歷過晨曦初露的歡愉雀躍，也曾跋涉過暴雨晦瞑的孤寂幽澗。那些突如其來的命運考驗，如同一把無情的刻刀，在我們的靈魂深處蝕刻下深淺不一的印記。然而，正是這份滄桑與歷練，賦予了生命無與倫比的厚重與尊嚴。面對困境，若能抱持中流砥柱般的沉著與膽識，縱使身陷泥淖，亦能仰望浩瀚繁星；經歷過烈火焚燒的痛楚，方能迎來鳳凰涅槃的重生。當我們白髮蒼蒼、驀然回首前塵往事，那些曾經流過的淚水早已化為甘冽的清泉，滋潤著後繼者的心田。生命的意義正在於這份生生不息的賡續與奉獻，以鏗鏘堅毅的步伐，在浩渺的寰宇之間譜寫出一曲震撼靈魂的雋永華章。風雨侵凌，巍然屹立；在無常歲月中淬鍊篤定心性，於滾滾紅塵裡守護澄澈本真。縱然山高水遠、荊棘載途，亦當奮楫篤行，以浩然正氣直面天地造化。願我們皆能在風浪中展現中流砥柱之概，不畏艱險、不懼風霜，將有限生涯融匯於歷史奔騰長河，在浩瀚天地間綻放永恆璀璨的生命絕響！踏遍青山人未老，風景這邊獨好！以堅定步履丈量無垠前程，用無畏心靈跨越千難萬險，在歲月淘洗中成就至純至美的人生大境界，薪火相傳、生生不息，光耀千秋萬代之宏境！'
+    };
+
+    // 英打 8 大經典國中題庫
+    const EN_LESSON_TEXTS = {
+      '1': 'Welcome to our junior high school! Every morning, the cheerful sun shines brightly over the campus. We greet our teachers with bright smiles and meet our friends in the classroom. Learning English, math, and science is truly fascinating. When the bell rings, we pack our schoolbags with joyful hearts.',
+      '2': 'Playing sports keeps our bodies healthy and our minds sharp! In physical education class, we enjoy running on the track, playing basketball, and swimming. Exercise teaches us teamwork, discipline, and fair play. Remember to drink plenty of water and get enough rest daily; a sound mind always rests within a healthy, energetic body!',
+      '3': 'In this modern digital age, computers and smartphones have changed how we communicate and study. With a single click, we can explore global news, learn foreign languages, and connect with people across oceans. However, we should never spend too much time staring at screens. Real conversations, outdoor adventures, and genuine friendships are far more precious!',
+      '4': 'Nature is a priceless treasure that offers clean air, fresh water, and precious landscapes. Lush forests shelter countless wild animals, while blooming flowers color our world in spring. Sadly, pollution and climate change threaten our fragile planet. We must reduce waste, recycle plastic bottles, and plant green trees. Let us cherish Mother Earth and protect our natural world together!',
+      '5': 'Books are magical windows that open up endless horizons of knowledge and imagination. Through reading classic literature and inspiring biographies, we can travel through time and converse with ancient philosophers. Reading broadens our vision, enriches our vocabulary, and brings tranquility to our bustling lives. A person who loves good books will never feel lonely; wisdom illuminates the path forward with bright hope.',
+      '6': 'True friendship is like a warm ray of sunshine on a cold winter day. A faithful friend listens to our worries, shares our laughter, and lends a helping hand when we stumble. Mutual respect, honesty, and empathy build an unbreakable bond between people. Always remember that a simple act of genuine kindness can illuminate someone\'s darkest day. By supporting each other through storms and celebrating triumphs, we discover the beauty of companionship.',
+      '7': 'Youth is a wonderful journey filled with boundless energy, courage, and ambitious dreams. As young students, we stand at the threshold of the future with hopeful eyes. The path toward our goals is seldom easy; steep mountains and unexpected storms will surely test our determination. Never fear failure, for each mistake is an invaluable stepping stone toward greater success! With deep courage and persistent effort, we can achieve our highest dreams and shine brightly in this world!',
+      '8': 'Life is a grand symphony composed of sweet melodies, dynamic rhythms, and challenging harmonies. Throughout our journey, we encounter both bright triumphs and shadowy setbacks. Those who possess resilience transform adversity into inner strength. Keep moving forward with confidence, cherish every fleeting moment, and create an inspiring masterpiece that brings pride and honor to your soul! Stand firm like a mountain before howling winds, hold fast to your integrity, and let your spirit soar across the sky!'
+    };
+
+    // 純向量 SVG 獎牌圖示生成庫 (徹底加入 xmlns 保證 html2canvas 能看到)
+    const SVG_ICONS = {
+      trophy: `<svg xmlns="http://www.w3.org/2000/svg" class="badge-icon-svg text-amber-300" viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>`,
+      gold: `<svg xmlns="http://www.w3.org/2000/svg" class="badge-icon-svg text-yellow-300" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>`,
+      silver: `<svg xmlns="http://www.w3.org/2000/svg" class="badge-icon-svg text-slate-200" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>`,
+      bronze: `<svg xmlns="http://www.w3.org/2000/svg" class="badge-icon-svg text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`,
+      sprout: `<svg xmlns="http://www.w3.org/2000/svg" class="badge-icon-svg text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`
+    };
+
+    // Google 試算表同步配置
+    const SPREADSHEET_ID = '1UjGVyxmKi7sM1eh8P2imDfoK5P0KqTEAeVfkPoSp5P0';
+    let isSyncing = false;
+
+    // 系統模式：'zh' (中打) 或 'en' (英打)
+    let currentMode = 'zh';
+    let cloudZhLessons = [];
+    let cloudEnLessons = [];
+    let currentLesson = '1';
+    let fullText = ZH_LESSON_TEXTS['1'];
+    let lines = [];
+    let currentLineIdx = 0;
+    let currentColIdx = 0;
+    let typedData = {};
+    let currentFontSize = 'md';
+    let isDashboardCompact = false;
+    let testDuration = 300;
+    let remainingTime = 300;
+    let timerId = null;
+    let isTestRunning = false;
+    let isTestFinished = false;
+    let startTime = null;
+    let lastResultSnapshot = null;
+    let audioCtx = null;
+
+    const modeZhBtn = document.getElementById('modeZhBtn');
+    const modeEnBtn = document.getElementById('modeEnBtn');
+    const headerSubtitle = document.getElementById('headerSubtitle');
+
+    const toggleDashboardCompactBtn = document.getElementById('toggleDashboardCompactBtn');
+    const toggleDashIcon = document.getElementById('toggleDashIcon');
+    const toggleDashText = document.getElementById('toggleDashText');
+    const fullDashboardSection = document.getElementById('fullDashboardSection');
+    const compactDashboardBar = document.getElementById('compactDashboardBar');
+
+    const lessonSelect = document.getElementById('lessonSelect');
+    const syncSheetBtn = document.getElementById('syncSheetBtn');
+    const syncIcon = document.getElementById('syncIcon');
+    const syncBtnText = document.getElementById('syncBtnText');
+    const timeSelect = document.getElementById('timeSelect');
+    const startBtn = document.getElementById('startBtn');
+    const startBtnText = document.getElementById('startBtnText');
+    const finishBtn = document.getElementById('finishBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const reopenModalBtn = document.getElementById('reopenModalBtn');
+
+    const typingBoard = document.getElementById('typingBoard');
+    const startOverlay = document.getElementById('startOverlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlaySubtitle = document.getElementById('overlaySubtitle');
+    const overlayRulesGrid = document.getElementById('overlayRulesGrid');
+    const overlayStartBtn = document.getElementById('overlayStartBtn');
+
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerStatusDot = document.getElementById('timerStatusDot');
+    const speedMetricTitle = document.getElementById('speedMetricTitle');
+    const speedMetricBadge = document.getElementById('speedMetricBadge');
+    const speedMetricUnit = document.getElementById('speedMetricUnit');
+    const liveNetWpm = document.getElementById('liveNetWpm');
+    const liveAccuracy = document.getElementById('liveAccuracy');
+    const charCountLabel = document.getElementById('charCountLabel');
+    const liveTypedCount = document.getElementById('liveTypedCount');
+    const liveErrorCount = document.getElementById('liveErrorCount');
+    const totalLessonChars = document.getElementById('totalLessonChars');
+    const unitText = document.getElementById('unitText');
+
+    // 精簡面板元素
+    const compactTimerDisplay = document.getElementById('compactTimerDisplay');
+    const compactLiveNetWpm = document.getElementById('compactLiveNetWpm');
+    const compactSpeedUnit = document.getElementById('compactSpeedUnit');
+    const compactLiveAccuracy = document.getElementById('compactLiveAccuracy');
+    const compactLiveTypedCount = document.getElementById('compactLiveTypedCount');
+    const compactTotalChars = document.getElementById('compactTotalChars');
+    const compactLiveErrorCount = document.getElementById('compactLiveErrorCount');
+
+    const fontSmBtn = document.getElementById('fontSmBtn');
+    const fontMdBtn = document.getElementById('fontMdBtn');
+    const fontLgBtn = document.getElementById('fontLgBtn');
+
+    const resultModal = document.getElementById('resultModal');
+    const certificateCard = document.getElementById('certificateCard');
+    const closeModalXBtn = document.getElementById('closeModalXBtn');
+    const closeModalBottomBtn = document.getElementById('closeModalBottomBtn');
+    const copyCertBtn = document.getElementById('copyCertBtn');
+    const downloadCertBtn = document.getElementById('downloadCertBtn');
+
+    const customTextModal = document.getElementById('customTextModal');
+    const customModalTitle = document.getElementById('customModalTitle');
+    const customModalDesc = document.getElementById('customModalDesc');
+    const customTextInput = document.getElementById('customTextInput');
+    const confirmCustomBtn = document.getElementById('confirmCustomBtn');
+    const cancelCustomBtn = document.getElementById('cancelCustomBtn');
+    const toast = document.getElementById('toast');
+
+    // 中打：固定 20 字一行
+    function splitZhTextIntoLines(text, charsPerLine = 20) {
+      const clean = text.replace(/[\r\n\t]/g, '').trim();
+      const res = [];
+      for (let i = 0; i < clean.length; i += charsPerLine) {
+        res.push(clean.slice(i, i + charsPerLine));
+      }
+      return res;
+    }
+
+    // 英打：每行最多 50 個半形字元，單字不截斷
+    function splitEnTextIntoLines(text, maxChars = 50) {
+      const clean = text.replace(/[\r\n\t]+/g, ' ').trim();
+      const words = clean.split(' ');
+      const lines = [];
+      let currentLine = '';
+
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        if (!currentLine) {
+          currentLine = word;
+        } else {
+          if ((currentLine + ' ' + word).length <= maxChars) {
+            currentLine += ' ' + word;
+          } else {
+            lines.push(currentLine);
+            currentLine = word;
+          }
+        }
+      }
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      return lines;
+    }
+
+    function getLinesForCurrentMode(text) {
+      return currentMode === 'zh' ? splitZhTextIntoLines(text, 20) : splitEnTextIntoLines(text, 50);
+    }
+
+    // 倒數提示音
+    function playBeep(freq = 880, duration = 0.08, type = 'sine') {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playUrgentCountdownBeeps(sec) {
+      if (sec > 10 || sec <= 0) return;
+      const baseFreq = 780 + (10 - sec) * 70;
+      if (sec >= 6) {
+        playBeep(baseFreq, 0.08, 'triangle');
+      } else if (sec >= 3) {
+        playBeep(baseFreq, 0.06, 'square');
+        setTimeout(() => playBeep(baseFreq + 60, 0.06, 'square'), 160);
+      } else {
+        playBeep(baseFreq, 0.045, 'sawtooth');
+        setTimeout(() => playBeep(baseFreq + 40, 0.045, 'sawtooth'), 120);
+        setTimeout(() => playBeep(baseFreq + 80, 0.045, 'sawtooth'), 240);
+        setTimeout(() => playBeep(baseFreq + 120, 0.045, 'sawtooth'), 360);
+      }
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0', 'translate-y-3', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-3', 'pointer-events-none');
+      }, 2600);
+    }
+
+    function toggleDashboardCompact() {
+      isDashboardCompact = !isDashboardCompact;
+      if (isDashboardCompact) {
+        fullDashboardSection.classList.add('hidden');
+        compactDashboardBar.classList.remove('hidden');
+        toggleDashIcon.style.transform = 'rotate(180deg)';
+        toggleDashText.textContent = '完整面板';
+      } else {
+        fullDashboardSection.classList.remove('hidden');
+        compactDashboardBar.classList.add('hidden');
+        toggleDashIcon.style.transform = 'none';
+        toggleDashText.textContent = '精簡面板';
+      }
+    }
+
+    toggleDashboardCompactBtn.addEventListener('click', toggleDashboardCompact);
+
+    function parseGoogleSheetJson(json) {
+      const table = json.table;
+      if (!table || !table.rows || table.rows.length === 0) {
+        throw new Error('試算表內無有效資料列');
+      }
+
+      let colZhongDa = -1, colYingDa = -1, colType = -1, colTitle = -1, colContent = -1;
+
+      if (table.cols && table.cols.length > 0) {
+        table.cols.forEach((c, idx) => {
+          const label = (c.label || '').trim();
+          if (label.includes('英打') || label.toLowerCase().includes('english')) colYingDa = idx;
+          else if (label.includes('中打') || label.toLowerCase().includes('chinese')) colZhongDa = idx;
+          else if (label.includes('類別') || label.includes('組別') || label.includes('項目')) colType = idx;
+          else if (label.includes('標題') || label.includes('篇名') || label.includes('課名')) colTitle = idx;
+          else if (label.includes('內容') || label.includes('文章') || label.includes('內文')) colContent = idx;
+        });
+      }
+
+      let startRowIdx = 0;
+      if ((colZhongDa === -1 && colYingDa === -1 && colTitle === -1) && table.rows.length > 0) {
+        const firstRow = table.rows[0].c || [];
+        firstRow.forEach((cell, idx) => {
+          const val = cell && cell.v !== null && cell.v !== undefined ? String(cell.v).trim() : '';
+          if (val.includes('英打') || val.toLowerCase().includes('english')) colYingDa = idx;
+          else if (val.includes('中打') || val.toLowerCase().includes('chinese')) colZhongDa = idx;
+          else if (val.includes('類別') || val.includes('組別') || val.includes('項目')) colType = idx;
+          else if (val.includes('標題') || val.includes('篇名') || val.includes('課名')) colTitle = idx;
+          else if (val.includes('內容') || val.includes('文章') || val.includes('內文')) colContent = idx;
+        });
+        if (colZhongDa !== -1 || colYingDa !== -1 || colTitle !== -1 || colContent !== -1) {
+          startRowIdx = 1;
+        }
+      }
+
+      if (colContent === -1) colContent = 2;
+      if (colTitle === -1) colTitle = 1;
+
+      const zhList = [];
+      const enList = [];
+
+      for (let r = startRowIdx; r < table.rows.length; r++) {
+        const rowCells = table.rows[r].c || [];
+        const getVal = (colIdx) => {
+          if (colIdx >= 0 && colIdx < rowCells.length && rowCells[colIdx] && rowCells[colIdx].v !== null && rowCells[colIdx].v !== undefined) {
+            return String(rowCells[colIdx].v).trim();
+          }
+          return '';
+        };
+
+        const rawType = colType !== -1 ? getVal(colType) : '';
+        const rawZhongDa = colZhongDa !== -1 ? getVal(colZhongDa) : '';
+        const rawYingDa = colYingDa !== -1 ? getVal(colYingDa) : '';
+        const rawTitle = getVal(colTitle);
+        const rawContent = getVal(colContent);
+
+        if (!rawContent || rawContent.length < 5) continue;
+
+        const isEnglishMarked = rawType.includes('英打') || rawYingDa.includes('英打') || rawTitle.includes('英打');
+        const englishCharCount = (rawContent.match(/[a-zA-Z]/g) || []).length;
+        const chineseCharCount = (rawContent.match(/[\u4e00-\u9fa5]/g) || []).length;
+        const isContentEnglish = englishCharCount > (chineseCharCount * 2);
+
+        if (isEnglishMarked || isContentEnglish) {
+          enList.push({
+            label: rawYingDa || rawType || `第 ${8 + enList.length + 1} 課`,
+            title: rawTitle || 'English Passage',
+            content: rawContent.replace(/[\r\n\t]+/g, ' ').trim()
+          });
+        } else {
+          zhList.push({
+            label: rawZhongDa || rawType || `第 ${8 + zhList.length + 1} 課`,
+            title: rawTitle || '無標題',
+            content: rawContent.replace(/[\r\n\t]+/g, ' ').trim()
+          });
+        }
+      }
+
+      return { zhList, enList };
+    }
+
+    function fetchSheetViaJsonp(url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'gvizCallback_' + Math.round(100000 * Math.random());
+        const script = document.createElement('script');
+        const timeout = setTimeout(() => {
+          window[callbackName] = null;
+          script.remove();
+          reject(new Error('連線逾時'));
+        }, 10000);
+
+        window[callbackName] = (data) => {
+          clearTimeout(timeout);
+          window[callbackName] = null;
+          script.remove();
+          resolve(data);
+        };
+
+        const separator = url.includes('?') ? '&' : '?';
+        script.src = `${url}${separator}tqx=responseHandler:${callbackName}`;
+        script.onerror = () => {
+          clearTimeout(timeout);
+          window[callbackName] = null;
+          script.remove();
+          reject(new Error('網路連線失敗'));
+        };
+        document.body.appendChild(script);
+      });
+    }
+
+    async function syncCloudLessons(isManualClick = false) {
+      if (isSyncing) return;
+      isSyncing = true;
+      syncIcon.classList.add('animate-spin');
+      if (syncBtnText) syncBtnText.textContent = '同步中...';
+
+      try {
+        let parsed = { zhList: [], enList: [] };
+        const isLocalFile = window.location.protocol === 'file:';
+        const baseUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq`;
+
+        if (isLocalFile) {
+          const data = await fetchSheetViaJsonp(baseUrl);
+          parsed = parseGoogleSheetJson(data);
+        } else {
+          try {
+            const response = await fetch(`${baseUrl}?tqx=out:json`);
+            const rawText = await response.text();
+            const startIdx = rawText.indexOf('{');
+            const endIdx = rawText.lastIndexOf('}');
+            if (startIdx === -1 || endIdx === -1) throw new Error('無法解析結構');
+            const json = JSON.parse(rawText.substring(startIdx, endIdx + 1));
+            parsed = parseGoogleSheetJson(json);
+          } catch (fetchErr) {
+            const data = await fetchSheetViaJsonp(baseUrl);
+            parsed = parseGoogleSheetJson(data);
+          }
+        }
+
+        cloudZhLessons = parsed.zhList;
+        cloudEnLessons = parsed.enList;
+
+        populateLessonSelect();
+
+        const totalSynced = cloudZhLessons.length + cloudEnLessons.length;
+        if (totalSynced > 0) {
+          showToast(`🎉 成功同步雲端題庫（中打 ${cloudZhLessons.length} 篇，英打 ${cloudEnLessons.length} 篇）！`);
+        } else if (isManualClick) {
+          showToast('已完成同步，試算表目前無新增篇章。');
+        }
+      } catch (err) {
+        if (isManualClick) {
+          showToast(`⚠ 雲端同步失敗（${err.message || '請確認試算表檢視權限'}）`);
+        }
+      } finally {
+        isSyncing = false;
+        syncIcon.classList.remove('animate-spin');
+        if (syncBtnText) syncBtnText.textContent = '同步';
+      }
+    }
+
+    function populateLessonSelect() {
+      const activeDict = currentMode === 'zh' ? ZH_LESSON_TEXTS : EN_LESSON_TEXTS;
+      const activeCloud = currentMode === 'zh' ? cloudZhLessons : cloudEnLessons;
+
+      lessonSelect.innerHTML = '';
+
+      for (let i = 1; i <= 8; i++) {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        const text = activeDict[String(i)] || '';
+        const count = text.length;
+
+        if (currentMode === 'zh') {
+          const names = ['生活的藝術', '自省與成長', '科技與人性', '大自然的啟示', '智慧的泉源', '人情與溫暖', '青春的夢想', '生命的樂章'];
+          opt.textContent = `第 ${i} 課：${names[i - 1]} (${count}字)`;
+        } else {
+          const names = ['School Life', 'Health & Exercise', 'Modern Technology', 'Protecting Nature', 'The Joy of Reading', 'Friendship and Kindness', 'Pursuing Dreams', 'Life\'s Symphony'];
+          opt.textContent = `Lesson ${i}: ${names[i - 1]} (${count} chars)`;
+        }
+        lessonSelect.appendChild(opt);
+      }
+
+      activeCloud.forEach((item, idx) => {
+        const optKey = `cloud_${currentMode}_${idx}`;
+        activeDict[optKey] = item.content;
+
+        const opt = document.createElement('option');
+        opt.value = optKey;
+        opt.className = 'cloud-injected-option';
+
+        let labelText = item.label;
+        if (!labelText.includes('第') && !labelText.includes('Lesson')) {
+          labelText = currentMode === 'zh' ? `第 ${8 + idx + 1} 課：${item.title}` : `Lesson ${8 + idx + 1}: ${item.title}`;
+        } else if (!labelText.includes('：') && !labelText.includes(':')) {
+          labelText = `${labelText}: ${item.title}`;
+        }
+
+        const countText = currentMode === 'zh' ? `${item.content.length}字` : `${item.content.length} chars`;
+        opt.textContent = `${labelText} (${countText})`;
+        lessonSelect.appendChild(opt);
+      });
+
+      const customOpt = document.createElement('option');
+      customOpt.value = 'custom';
+      customOpt.id = 'customLessonOption';
+      customOpt.textContent = currentMode === 'zh' ? '自訂文章...' : 'Custom Passage...';
+      lessonSelect.appendChild(customOpt);
+
+      if (activeDict[currentLesson]) {
+        lessonSelect.value = currentLesson;
+      } else {
+        currentLesson = '1';
+        lessonSelect.value = '1';
+      }
+    }
+
+    function switchMode(newMode) {
+      if (isTestRunning) {
+        showToast('測驗進行中請先點擊重設，方可更換中/英模式！');
+        return;
+      }
+      if (currentMode === newMode) return;
+
+      currentMode = newMode;
+      lastResultSnapshot = null;
+      reopenModalBtn.classList.add('hidden');
+
+      if (currentMode === 'zh') {
+        modeZhBtn.className = 'px-2.5 py-1 rounded text-xs font-black transition-all bg-white text-blue-700 shadow-sm whitespace-nowrap';
+        modeEnBtn.className = 'px-2.5 py-1 rounded text-xs font-black transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap';
+        headerSubtitle.textContent = '國際標準 NET CPM 檢定 ‧ 每行固定 20 字 ‧ 藍框直接打字 ‧ 就地修改';
+        speedMetricTitle.textContent = '每分淨字 (NET CPM)';
+        speedMetricUnit.textContent = '字/分 (扣錯)';
+        compactSpeedUnit.textContent = '字/分';
+        charCountLabel.textContent = '已輸入 / 錯字';
+        unitText.textContent = '字';
+        overlayTitle.textContent = '銘傳國中資訊教育打字檢定（中文）';
+        overlaySubtitle.textContent = '標準檢定規範 ‧ 每錯扣 5 字 ‧ 檢定版v1.4 雲端題庫支援';
+      } else {
+        modeEnBtn.className = 'px-2.5 py-1 rounded text-xs font-black transition-all bg-white text-blue-700 shadow-sm whitespace-nowrap';
+        modeZhBtn.className = 'px-2.5 py-1 rounded text-xs font-black transition-all text-slate-600 hover:text-slate-900 whitespace-nowrap';
+        headerSubtitle.textContent = '國際標準 NET WPM 英打檢定 ‧ 5字元=1字 ‧ 每行50字元不截斷 ‧ 大小寫敏感';
+        speedMetricTitle.textContent = '每分淨手速 (NET WPM)';
+        speedMetricUnit.textContent = '字/分 (5字元=1字)';
+        compactSpeedUnit.textContent = 'WPM';
+        charCountLabel.textContent = '已打字元 / 錯字';
+        unitText.textContent = '字元';
+        overlayTitle.textContent = '銘傳國中資訊教育打字檢定（英文）';
+        overlaySubtitle.textContent = '標準英打規範 ‧ 5 字元折算 1 字 (WPM) ‧ 大小寫區分 ‧ 每一錯扣 1 字(5字元)';
+      }
+
+      updateOverlayRules();
+      populateLessonSelect();
+      currentLesson = '1';
+      const dict = currentMode === 'zh' ? ZH_LESSON_TEXTS : EN_LESSON_TEXTS;
+      fullText = dict['1'];
+      resetTest();
+    }
+
+    function updateOverlayRules() {
+      if (currentMode === 'zh') {
+        overlayRulesGrid.innerHTML = `
+          <div class="flex items-center gap-2 text-slate-700 font-semibold">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            每行固定 20 字等寬網格
+          </div>
+          <div class="flex items-center gap-2 text-slate-700 font-semibold">
+            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+            微軟新注音即時選字與同尺寸
+          </div>
+          <div class="flex items-center gap-2 text-slate-700 font-semibold">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            打滿 20 字自動平滑跳行
+          </div>
+          <div class="flex items-center gap-2 text-slate-700 font-semibold">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            點擊錯字直接就地覆蓋修改
+          </div>
+        `;
+      } else {
+        overlayRulesGrid.innerHTML = `
+          <div class="flex items-center gap-2 text-slate-700 font-semibold">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            每行上限 50 字元 (詞不截斷)
+          </div>
+          <div class="flex items-center gap-2 text-slate-700 font-semibold">
+            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+            嚴格區分大小寫與半形標點
+          </div>
+          <div class="flex items-center gap-2 text-slate-700 font-semibold">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            空白鍵 (Space) 輸入詞間空格
+          </div>
+          <div class="flex items-center gap-2 text-slate-700 font-semibold">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            點擊或倒退鍵隨時更正錯字
+          </div>
+        `;
+      }
+    }
+
+    function renderLines() {
+      typingBoard.innerHTML = '';
+      totalLessonChars.textContent = fullText.length;
+      if (compactTotalChars) compactTotalChars.textContent = fullText.length;
+
+      const fontClasses = currentMode === 'zh' ? {
+        sm: { text: 'text-base sm:text-lg', height: 'h-9 sm:h-10' },
+        md: { text: 'text-lg sm:text-xl', height: 'h-10 sm:h-12' },
+        lg: { text: 'text-xl sm:text-2xl', height: 'h-12 sm:h-14' }
+      }[currentFontSize] : {
+        sm: { text: 'text-xs sm:text-sm font-arial', height: 'h-8 sm:h-9' },
+        md: { text: 'text-sm sm:text-base font-arial', height: 'h-9 sm:h-10' },
+        lg: { text: 'text-base sm:text-lg font-arial', height: 'h-10 sm:h-12' }
+      }[currentFontSize];
+
+      const gridColsClass = currentMode === 'zh' ? 'line-20-grid' : 'line-50-grid';
+      const maxCols = currentMode === 'zh' ? 20 : 50;
+
+      let charGlobalIdx = 0;
+
+      lines.forEach((lineText, lineIdx) => {
+        const lineCard = document.createElement('div');
+        lineCard.className = `bg-white/95 rounded-2xl p-2 sm:p-3 shadow-sm border border-slate-200/90 transition-all duration-200 ${lineIdx === currentLineIdx ? 'ring-2 ring-blue-500/80 shadow-md' : 'opacity-90'}`;
+        lineCard.id = `lineCard_${lineIdx}`;
+
+        const lineHeader = document.createElement('div');
+        lineHeader.className = 'flex items-center justify-between text-[11px] font-bold text-slate-400 mb-1 px-1';
+        lineHeader.innerHTML = `
+          <span class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full ${lineIdx === currentLineIdx ? 'bg-blue-600' : 'bg-slate-300'}"></span>
+            ${currentMode === 'zh' ? `第 ${lineIdx + 1} 行` : `Line ${lineIdx + 1}`}
+          </span>
+          <span class="font-mono-num text-[10px] text-slate-400">${charGlobalIdx + 1} ~ ${charGlobalIdx + lineText.length} ${currentMode === 'zh' ? '字' : 'chars'}</span>
+        `;
+        lineCard.appendChild(lineHeader);
+
+        const gridWrapper = document.createElement('div');
+        gridWrapper.className = 'w-full overflow-x-auto no-scrollbar scroll-smooth';
+
+        const sourceRow = document.createElement('div');
+        sourceRow.className = `${gridColsClass} mb-1.5`;
+        for (let col = 0; col < maxCols; col++) {
+          const char = col < lineText.length ? lineText[col] : '';
+          const cell = document.createElement('div');
+          cell.className = `flex items-center justify-center font-bold text-slate-800 ${fontClasses.text} ${fontClasses.height} rounded bg-slate-100/90 border border-slate-200/80 select-none overflow-hidden`;
+          cell.id = `src_${lineIdx}_${col}`;
+
+          if (char === ' ') {
+            cell.innerHTML = '&nbsp;';
+          } else {
+            cell.textContent = char;
+          }
+
+          if (!char) cell.classList.add('invisible');
+          sourceRow.appendChild(cell);
+        }
+        gridWrapper.appendChild(sourceRow);
+
+        const inputRow = document.createElement('div');
+        inputRow.className = `${gridColsClass} relative`;
+        for (let col = 0; col < maxCols; col++) {
+          const charIdx = charGlobalIdx + col;
+          const hasSource = col < lineText.length;
+
+          const cell = document.createElement('div');
+          cell.className = `relative flex items-center justify-center font-bold ${fontClasses.text} ${fontClasses.height} rounded border border-slate-300 bg-white shadow-xs transition cursor-pointer overflow-hidden`;
+          cell.id = `inputCell_${lineIdx}_${col}`;
+          cell.dataset.line = lineIdx;
+          cell.dataset.col = col;
+          cell.dataset.globalIdx = charIdx;
+
+          if (!hasSource) {
+            cell.classList.add('invisible');
+          } else {
+            cell.addEventListener('mousedown', (e) => {
+              e.preventDefault();
+              focusCell(lineIdx, col);
+            });
+          }
+
+          const textSpan = document.createElement('span');
+          textSpan.className = 'cell-text-node select-none leading-none';
+          cell.appendChild(textSpan);
+
+          inputRow.appendChild(cell);
+        }
+        gridWrapper.appendChild(inputRow);
+        lineCard.appendChild(gridWrapper);
+
+        typingBoard.appendChild(lineCard);
+        charGlobalIdx += lineText.length;
+      });
+
+      updateAllCellsDisplay();
+    }
+
+    let dynamicInputEl = null;
+
+    function createOrUpdateDynamicInput() {
+      if (!dynamicInputEl) {
+        dynamicInputEl = document.createElement('input');
+        dynamicInputEl.type = 'text';
+        dynamicInputEl.autocomplete = 'off';
+        dynamicInputEl.autocorrect = 'off';
+        dynamicInputEl.autocapitalize = 'off';
+        dynamicInputEl.spellcheck = false;
+        dynamicInputEl.id = 'activeDynamicInput';
+        dynamicInputEl.className = 'absolute inset-0 w-full h-full text-center font-bold bg-transparent outline-none z-10 p-0 m-0 border-none cursor-text select-text';
+        
+        dynamicInputEl.addEventListener('input', handleDynamicInput);
+        dynamicInputEl.addEventListener('keydown', handleDynamicKeyDown);
+
+        dynamicInputEl.addEventListener('compositionstart', handleCompositionStart);
+        dynamicInputEl.addEventListener('compositionupdate', handleCompositionUpdate);
+        dynamicInputEl.addEventListener('compositionend', handleCompositionEnd);
+      }
+
+      const activeCell = document.getElementById(`inputCell_${currentLineIdx}_${currentColIdx}`);
+      if (activeCell) {
+        const fontClass = currentMode === 'zh' ? {
+          sm: 'text-base sm:text-lg',
+          md: 'text-lg sm:text-xl',
+          lg: 'text-xl sm:text-2xl'
+        }[currentFontSize] : {
+          sm: 'text-xs sm:text-sm font-arial',
+          md: 'text-sm sm:text-base font-arial',
+          lg: 'text-base sm:text-lg font-arial'
+        }[currentFontSize];
+
+        dynamicInputEl.className = `absolute inset-0 w-full h-full text-center font-bold bg-transparent outline-none z-10 p-0 m-0 border-none cursor-text select-text text-slate-900 ${fontClass}`;
+        dynamicInputEl.style.fontSize = '';
+        dynamicInputEl.style.letterSpacing = '';
+        dynamicInputEl.style.transform = 'none';
+
+        if (dynamicInputEl.parentElement !== activeCell) {
+          activeCell.appendChild(dynamicInputEl);
+        }
+
+        dynamicInputEl.value = '';
+        if (isTestRunning) {
+          dynamicInputEl.focus();
+        }
+      }
+    }
+
+    let isComposing = false;
+
+    function handleCompositionStart(e) {
+      isComposing = true;
+      const activeCell = document.getElementById(`inputCell_${currentLineIdx}_${currentColIdx}`);
+      if (activeCell) {
+        const textSpan = activeCell.querySelector('.cell-text-node');
+        if (textSpan) textSpan.classList.add('opacity-0');
+      }
+    }
+
+    function handleCompositionUpdate(e) {
+      isComposing = true;
+      const val = e.data || dynamicInputEl.value || '';
+      if (currentMode === 'zh') {
+        if (val.length >= 5) {
+          dynamicInputEl.style.transform = 'scale(0.65)';
+          dynamicInputEl.style.letterSpacing = '-0.08em';
+        } else if (val.length === 4) {
+          dynamicInputEl.style.transform = 'scale(0.74)';
+          dynamicInputEl.style.letterSpacing = '-0.06em';
+        } else if (val.length === 3) {
+          dynamicInputEl.style.transform = 'scale(0.85)';
+          dynamicInputEl.style.letterSpacing = '-0.04em';
+        } else {
+          dynamicInputEl.style.transform = 'none';
+          dynamicInputEl.style.letterSpacing = '';
+        }
+      }
+    }
+
+    function handleCompositionEnd(e) {
+      isComposing = false;
+      dynamicInputEl.style.transform = 'none';
+      dynamicInputEl.style.letterSpacing = '';
+      const finalChar = e.data;
+      if (finalChar) {
+        commitTypedString(finalChar);
+      }
+    }
+
+    function handleDynamicInput(e) {
+      if (isComposing) return;
+      const val = dynamicInputEl.value;
+      if (val && val.length > 0) {
+        commitTypedString(val);
+      }
+    }
+
+    function commitTypedString(str) {
+      if (!isTestRunning && !isTestFinished) {
+        startTest();
+      }
+
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        const gIdx = getGlobalIndex(currentLineIdx, currentColIdx);
+        typedData[gIdx] = char;
+        updateSingleCellDisplay(currentLineIdx, currentColIdx);
+
+        moveToNextCell();
+      }
+
+      dynamicInputEl.value = '';
+      updateStats();
+      checkAutoFinish();
+    }
+
+    function handleDynamicKeyDown(e) {
+      if (isComposing) return;
+
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        commitTypedString(' ');
+        return;
+      }
+
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        const currentGlobalIdx = getGlobalIndex(currentLineIdx, currentColIdx);
+
+        if (typedData[currentGlobalIdx] !== undefined) {
+          delete typedData[currentGlobalIdx];
+          updateSingleCellDisplay(currentLineIdx, currentColIdx);
+          updateStats();
+        } else {
+          moveToPrevCell();
+          const prevGlobalIdx = getGlobalIndex(currentLineIdx, currentColIdx);
+          delete typedData[prevGlobalIdx];
+          updateSingleCellDisplay(currentLineIdx, currentColIdx);
+          updateStats();
+        }
+        return;
+      }
+
+      if (e.key === 'Delete') {
+        e.preventDefault();
+        const currentGlobalIdx = getGlobalIndex(currentLineIdx, currentColIdx);
+        delete typedData[currentGlobalIdx];
+        updateSingleCellDisplay(currentLineIdx, currentColIdx);
+        updateStats();
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        moveToPrevCell();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        moveToNextCell(false);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (currentLineIdx > 0) focusCell(currentLineIdx - 1, currentColIdx);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (currentLineIdx < lines.length - 1) focusCell(currentLineIdx + 1, currentColIdx);
+      }
+    }
+
+    function getGlobalIndex(lineIdx, colIdx) {
+      let g = 0;
+      for (let l = 0; l < lineIdx; l++) {
+        g += lines[l].length;
+      }
+      return g + colIdx;
+    }
+
+    function moveToPrevCell() {
+      if (currentColIdx > 0) {
+        focusCell(currentLineIdx, currentColIdx - 1);
+      } else if (currentLineIdx > 0) {
+        const prevLineLen = lines[currentLineIdx - 1].length;
+        focusCell(currentLineIdx - 1, prevLineLen - 1);
+      }
+    }
+
+    function moveToNextCell(autoExpand = true) {
+      const lineLen = lines[currentLineIdx].length;
+      if (currentColIdx < lineLen - 1) {
+        focusCell(currentLineIdx, currentColIdx + 1);
+      } else if (currentLineIdx < lines.length - 1) {
+        focusCell(currentLineIdx + 1, 0);
+      }
+    }
+
+    function focusCell(lineIdx, colIdx) {
+      const lineLen = lines[lineIdx].length;
+      if (colIdx >= lineLen) colIdx = lineLen - 1;
+      if (colIdx < 0) colIdx = 0;
+
+      const prevLine = currentLineIdx;
+      const prevCol = currentColIdx;
+
+      currentLineIdx = lineIdx;
+      currentColIdx = colIdx;
+
+      updateSingleCellDisplay(prevLine, prevCol);
+      updateSingleCellDisplay(currentLineIdx, currentColIdx);
+      createOrUpdateDynamicInput();
+
+      const targetCell = document.getElementById(`inputCell_${currentLineIdx}_${currentColIdx}`);
+      if (targetCell) {
+        targetCell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+
+      if (prevLine !== currentLineIdx) {
+        document.querySelectorAll('[id^="lineCard_"]').forEach((c, idx) => {
+          if (idx === currentLineIdx) {
+            c.classList.add('ring-2', 'ring-blue-500/80', 'shadow-md');
+            c.classList.remove('opacity-90');
+            c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else {
+            c.classList.remove('ring-2', 'ring-blue-500/80', 'shadow-md');
+            c.classList.add('opacity-90');
+          }
+        });
+      }
+    }
+
+    function updateSingleCellDisplay(lineIdx, colIdx) {
+      const cell = document.getElementById(`inputCell_${lineIdx}_${colIdx}`);
+      if (!cell) return;
+
+      const gIdx = getGlobalIndex(lineIdx, colIdx);
+      const targetChar = lines[lineIdx] && lines[lineIdx][colIdx] !== undefined ? lines[lineIdx][colIdx] : '';
+      const inputChar = typedData[gIdx];
+      const isActive = (lineIdx === currentLineIdx && colIdx === currentColIdx);
+
+      const textSpan = cell.querySelector('.cell-text-node');
+
+      const fontClasses = currentMode === 'zh' ? {
+        sm: 'text-base sm:text-lg h-9 sm:h-10',
+        md: 'text-lg sm:text-xl h-10 sm:h-12',
+        lg: 'text-xl sm:text-2xl h-12 sm:h-14'
+      }[currentFontSize] : {
+        sm: 'text-xs sm:text-sm font-arial h-8 sm:h-9',
+        md: 'text-sm sm:text-base font-arial h-9 sm:h-10',
+        lg: 'text-base sm:text-lg font-arial h-10 sm:h-12'
+      }[currentFontSize];
+
+      cell.className = `relative flex items-center justify-center font-bold ${fontClasses} rounded border transition cursor-pointer select-none overflow-hidden`;
+
+      if (textSpan) {
+        textSpan.classList.remove('opacity-0');
+      }
+
+      if (inputChar === undefined || inputChar === '') {
+        if (textSpan) textSpan.textContent = '';
+        cell.classList.add('bg-white', 'border-slate-300', 'shadow-xs');
+
+        if (isActive) {
+          cell.classList.add('active-glow', 'border-blue-600', 'bg-blue-50/50');
+        }
+        return;
+      }
+
+      const isCorrect = (inputChar === targetChar);
+      if (textSpan) {
+        if (inputChar === ' ') {
+          textSpan.innerHTML = isCorrect ? '&nbsp;' : '<span class="text-rose-400 font-black">&times;</span>';
+        } else {
+          textSpan.textContent = inputChar;
+        }
+      }
+
+      if (isActive) {
+        cell.classList.add('active-glow', 'border-blue-600');
+        if (isCorrect) {
+          cell.classList.add('bg-emerald-100', 'text-slate-900');
+        } else {
+          cell.classList.add('bg-rose-100', 'text-slate-900');
+        }
+      } else {
+        if (isCorrect) {
+          cell.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600');
+        } else {
+          cell.classList.add('bg-rose-500', 'text-white', 'border-rose-600');
+        }
+      }
+    }
+
+    function updateAllCellsDisplay() {
+      lines.forEach((lineText, lineIdx) => {
+        for (let col = 0; col < lineText.length; col++) {
+          updateSingleCellDisplay(lineIdx, col);
+        }
+      });
+      createOrUpdateDynamicInput();
+    }
+
+    function updateStats() {
+      let typedCount = 0;
+      let errorCount = 0;
+
+      let gIdx = 0;
+      lines.forEach((lineText) => {
+        for (let col = 0; col < lineText.length; col++) {
+          const input = typedData[gIdx];
+          const target = lineText[col];
+          if (input !== undefined) {
+            typedCount++;
+            if (input !== target) {
+              errorCount++;
+            }
+          }
+          gIdx++;
+        }
+      });
+
+      const accuracy = typedCount > 0 ? Math.max(0, Math.round(((typedCount - errorCount) / typedCount) * 100)) : 100;
+
+      let elapsedSeconds = 0;
+      if (startTime && isTestRunning) {
+        elapsedSeconds = Math.max(1, Math.floor((Date.now() - startTime) / 1000));
+      } else if (testDuration > 0 && isTestFinished) {
+        elapsedSeconds = Math.max(1, testDuration - remainingTime);
+      } else if (testDuration === 0 && isTestFinished) {
+        elapsedSeconds = Math.max(1, Math.floor((Date.now() - startTime) / 1000));
+      }
+
+      const elapsedMinutes = Math.max(0.1, elapsedSeconds / 60);
+
+      let grossSpeed = 0;
+      let netSpeed = 0;
+      let penaltyDisplay = '';
+
+      if (currentMode === 'zh') {
+        grossSpeed = Math.round(typedCount / elapsedMinutes);
+        const penaltyChars = errorCount * 5;
+        netSpeed = Math.max(0, Math.round((typedCount - penaltyChars) / elapsedMinutes));
+        penaltyDisplay = `-${penaltyChars} (${errorCount}錯)`;
+      } else {
+        const grossWords = typedCount / 5;
+        grossSpeed = Math.round(grossWords / elapsedMinutes);
+        const penaltyWords = errorCount;
+        netSpeed = Math.max(0, Math.round((grossWords - penaltyWords) / elapsedMinutes));
+        penaltyDisplay = `-${penaltyWords}字 (${errorCount}錯)`;
+      }
+
+      liveNetWpm.textContent = netSpeed;
+      liveAccuracy.textContent = accuracy;
+      liveTypedCount.textContent = typedCount;
+      liveErrorCount.textContent = errorCount;
+
+      if (compactLiveNetWpm) compactLiveNetWpm.textContent = netSpeed;
+      if (compactLiveAccuracy) compactLiveAccuracy.textContent = `${accuracy}%`;
+      if (compactLiveTypedCount) compactLiveTypedCount.textContent = typedCount;
+      if (compactLiveErrorCount) compactLiveErrorCount.textContent = errorCount;
+
+      return {
+        typedCount,
+        errorCount,
+        accuracy,
+        grossWpm: grossSpeed,
+        netWpm: netSpeed,
+        penaltyDisplay,
+        elapsedSeconds
+      };
+    }
+
+    function checkAutoFinish() {
+      let allFilled = true;
+      let total = 0;
+      lines.forEach((lineText) => {
+        total += lineText.length;
+      });
+
+      for (let i = 0; i < total; i++) {
+        if (typedData[i] === undefined) {
+          allFilled = false;
+          break;
+        }
+      }
+
+      if (allFilled && isTestRunning) {
+        finishTest();
+      }
+    }
+
+    function startTest() {
+      if (isTestRunning) return;
+
+      isTestRunning = true;
+      isTestFinished = false;
+      startTime = Date.now();
+
+      lessonSelect.disabled = true;
+      lessonSelect.classList.add('opacity-60', 'cursor-not-allowed');
+      timeSelect.disabled = true;
+      timeSelect.classList.add('opacity-60', 'cursor-not-allowed');
+      modeZhBtn.disabled = true;
+      modeEnBtn.disabled = true;
+
+      startBtn.classList.add('bg-amber-600', 'hover:bg-amber-700');
+      startBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+      startBtnText.textContent = '測驗進行中';
+
+      if (testDuration === 0) {
+        finishBtn.disabled = false;
+        finishBtn.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+        finishBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700', 'text-white', 'cursor-pointer');
+      } else {
+        finishBtn.disabled = true;
+        finishBtn.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+        finishBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700', 'text-white', 'cursor-pointer');
+      }
+
+      startOverlay.classList.add('opacity-0', 'pointer-events-none');
+      timerStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+
+      if (timerId) clearInterval(timerId);
+      if (testDuration > 0) {
+        remainingTime = testDuration;
+        updateTimerDisplay(remainingTime);
+
+        timerId = setInterval(() => {
+          remainingTime--;
+          updateTimerDisplay(remainingTime);
+          updateStats();
+
+          if (remainingTime <= 10 && remainingTime > 0) {
+            playUrgentCountdownBeeps(remainingTime);
+          }
+
+          if (remainingTime <= 0) {
+            clearInterval(timerId);
+            playBeep(440, 0.5, 'sine');
+            finishTest();
+          }
+        }, 1000);
+      } else {
+        timerDisplay.textContent = '∞ 自由練';
+        if (compactTimerDisplay) compactTimerDisplay.textContent = '∞';
+        timerId = setInterval(() => {
+          updateStats();
+        }, 1000);
+      }
+
+      focusCell(0, 0);
+    }
+
+    function updateTimerDisplay(secs) {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      const str = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      timerDisplay.textContent = str;
+      if (compactTimerDisplay) compactTimerDisplay.textContent = str;
+    }
+
+    function finishTest() {
+      if (!isTestRunning && isTestFinished) return;
+
+      isTestRunning = false;
+      isTestFinished = true;
+      if (timerId) clearInterval(timerId);
+
+      lessonSelect.disabled = false;
+      lessonSelect.classList.remove('opacity-60', 'cursor-not-allowed');
+      timeSelect.disabled = false;
+      timeSelect.classList.remove('opacity-60', 'cursor-not-allowed');
+      modeZhBtn.disabled = false;
+      modeEnBtn.disabled = false;
+
+      startBtn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
+      startBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      startBtnText.textContent = '再次測驗';
+
+      timerStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+
+      const stats = updateStats();
+      const selectedOpt = lessonSelect.options[lessonSelect.selectedIndex];
+      const optTitle = selectedOpt ? selectedOpt.textContent.split('(')[0].trim() : '第 1 課';
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+
+      const timeOpt = timeSelect.options[timeSelect.selectedIndex];
+      let durationModeText = '自由練習';
+      if (testDuration > 0) {
+        const mins = Math.floor(testDuration / 60);
+        durationModeText = `${mins} 分鐘`;
+      } else if (timeOpt && timeOpt.textContent.includes('分')) {
+        durationModeText = timeOpt.textContent.replace('分', '分鐘').trim();
+      }
+      
+      const actualSecs = stats.elapsedSeconds;
+      const actM = Math.floor(actualSecs / 60);
+      const actS = actualSecs % 60;
+      const actualDurationFormatted = `${String(actM).padStart(2, '0')}:${String(actS).padStart(2, '0')}`;
+
+      stats.mode = currentMode;
+      stats.lessonName = `${currentMode === 'zh' ? '中打' : '英打'} ${optTitle}`;
+      stats.durationMode = durationModeText;
+      stats.actualDurationFormatted = actualDurationFormatted;
+      stats.testDate = dateStr;
+
+      lastResultSnapshot = stats;
+
+      reopenModalBtn.classList.remove('hidden');
+      showResultModal(stats);
+    }
+
+    function resetTest() {
+      if (timerId) clearInterval(timerId);
+      isTestRunning = false;
+      isTestFinished = false;
+      typedData = {};
+      currentLineIdx = 0;
+      currentColIdx = 0;
+
+      lastResultSnapshot = null;
+      reopenModalBtn.classList.add('hidden');
+
+      lessonSelect.disabled = false;
+      lessonSelect.classList.remove('opacity-60', 'cursor-not-allowed');
+      timeSelect.disabled = false;
+      timeSelect.classList.remove('opacity-60', 'cursor-not-allowed');
+      modeZhBtn.disabled = false;
+      modeEnBtn.disabled = false;
+
+      testDuration = parseInt(timeSelect.value, 10);
+      remainingTime = testDuration;
+      updateTimerDisplay(testDuration);
+
+      startBtn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
+      startBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      startBtnText.textContent = '開始測驗';
+
+      finishBtn.disabled = true;
+      finishBtn.className = 'flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200 cursor-not-allowed transition shrink-0 whitespace-nowrap';
+
+      timerStatusDot.className = 'w-2 h-2 rounded-full bg-slate-300';
+      startOverlay.classList.remove('opacity-0', 'pointer-events-none');
+
+      liveNetWpm.textContent = '0';
+      liveAccuracy.textContent = '100';
+      liveTypedCount.textContent = '0';
+      liveErrorCount.textContent = '0';
+
+      if (compactLiveNetWpm) compactLiveNetWpm.textContent = '0';
+      if (compactLiveAccuracy) compactLiveAccuracy.textContent = '100%';
+      if (compactLiveTypedCount) compactLiveTypedCount.textContent = '0';
+      if (compactLiveErrorCount) compactLiveErrorCount.textContent = '0';
+
+      lines = getLinesForCurrentMode(fullText);
+      renderLines();
+      createOrUpdateDynamicInput();
+    }
+
+    function showResultModal(stats) {
+      if (!stats) return;
+
+      // 1. 同步資料到畫面上顯示的 UI 視窗 (提供給使用者觀看)
+      document.getElementById('modalNetSpeed').textContent = stats.netWpm;
+      document.getElementById('modalGrossSpeed').textContent = stats.grossWpm;
+      document.getElementById('modalAccuracy').textContent = `${stats.accuracy}%`;
+
+      const isZh = stats.mode === 'zh';
+      document.getElementById('modalTotalChars').textContent = isZh ? `${stats.typedCount} 字` : `${stats.typedCount} 字元 (${Math.round(stats.typedCount / 5)} 字)`;
+      document.getElementById('modalWrongPenaltyVal').textContent = stats.penaltyDisplay;
+
+      document.getElementById('modalHeaderTagText').textContent = isZh ? '銘傳國中資訊教育中打檢定' : '銘傳國中資訊教育英打檢定';
+      document.getElementById('modalSpeedLabel').textContent = isZh ? '每分鐘淨字數 (NET CPM)' : '每分鐘淨字數 (NET WPM，5字元=1字)';
+      document.getElementById('modalGrossLabel').textContent = isZh ? '每分鐘毛字數 (Gross CPM)' : '每分鐘毛字數 (Gross WPM)';
+
+      document.getElementById('modalLessonName').textContent = stats.lessonName;
+      document.getElementById('modalDurationMode').textContent = stats.durationMode || '5 分鐘';
+      document.getElementById('modalActualDuration').textContent = stats.actualDurationFormatted || '05:00';
+      document.getElementById('modalTestDate').textContent = stats.testDate;
+
+      const badge = document.getElementById('modalRatingBadge');
+      const iconSlot = document.getElementById('badgeIconSlot');
+      const textSlot = document.getElementById('badgeTextSlot');
+      const net = stats.netWpm;
+      
+      let iconSvg = SVG_ICONS.sprout;
+      let title = '再接再厲 ‧ 練習級';
+      let bgColorClass = 'bg-slate-700';
+
+      if (isZh) {
+        if (net >= 80) { iconSvg = SVG_ICONS.trophy; title = '卓越非凡 ‧ 特優特級'; bgColorClass = 'bg-purple-600'; }
+        else if (net >= 50) { iconSvg = SVG_ICONS.gold; title = '專業達標 ‧ 優等甲級'; bgColorClass = 'bg-blue-600'; }
+        else if (net >= 30) { iconSvg = SVG_ICONS.silver; title = '熟練進階 ‧ 佳作乙級'; bgColorClass = 'bg-emerald-600'; }
+        else if (net >= 15) { iconSvg = SVG_ICONS.bronze; title = '基礎合格 ‧ 丙級合格'; bgColorClass = 'bg-amber-600'; }
+      } else {
+        if (net >= 60) { iconSvg = SVG_ICONS.trophy; title = '卓越非凡 ‧ Master (60+ WPM)'; bgColorClass = 'bg-purple-600'; }
+        else if (net >= 45) { iconSvg = SVG_ICONS.gold; title = '專業達標 ‧ Advanced (45+ WPM)'; bgColorClass = 'bg-blue-600'; }
+        else if (net >= 30) { iconSvg = SVG_ICONS.silver; title = '熟練進階 ‧ Intermediate (30+ WPM)'; bgColorClass = 'bg-emerald-600'; }
+        else if (net >= 15) { iconSvg = SVG_ICONS.bronze; title = '基礎合格 ‧ Basic (15+ WPM)'; bgColorClass = 'bg-amber-600'; }
+      }
+
+      badge.className = `text-xs font-black tracking-wider shadow-sm text-white px-6 py-2 rounded-full ${bgColorClass}`;
+      iconSlot.innerHTML = iconSvg;
+      textSlot.textContent = title;
+
+      // 2. 同步資料到「隱藏的 16:9 高畫質截圖專屬畫布」
+      document.getElementById('exportNetSpeed').textContent = stats.netWpm;
+      document.getElementById('exportHeaderTagText').textContent = isZh ? '銘傳國中資訊教育中打檢定' : '銘傳國中資訊教育英打檢定';
+      document.getElementById('exportSpeedLabel').textContent = isZh ? '每分鐘淨字數 (NET CPM)' : '每分鐘淨字數 (NET WPM，5字元=1字)';
+      document.getElementById('exportLessonName').textContent = stats.lessonName;
+      
+      const exportDurationEl = document.getElementById('exportDurationMode');
+      const durationText = stats.durationMode || '5 分鐘';
+      exportDurationEl.textContent = durationText;
+      // 若是自由練習，文字顯示為醒目的紅色；一般限時則為預設深色
+      if (durationText.includes('自由練習')) {
+        exportDurationEl.style.color = '#dc2626'; // Tailwind red-600
+      } else {
+        exportDurationEl.style.color = '#1e293b'; // Tailwind slate-800
+      }
+
+      document.getElementById('exportActualDuration').textContent = stats.actualDurationFormatted || '05:00';
+      document.getElementById('exportTestDate').textContent = stats.testDate;
+
+      resultModal.classList.remove('opacity-0', 'pointer-events-none');
+    }
+
+    function closeResultModal() {
+      resultModal.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    async function copyCertificateImage() {
+      try {
+        await document.fonts.ready;
+        const interactiveBtns = certificateCard.querySelectorAll('.modal-interactive-btn');
+        interactiveBtns.forEach(b => b.style.visibility = 'hidden');
+
+        // 改為對隱藏的 16:9 容器進行截圖
+        const wrapper = document.getElementById('exportContainerWrapper');
+        wrapper.style.opacity = '1';
+        const exportTarget = document.getElementById('exportContainer');
+
+        const canvas = await html2canvas(exportTarget, {
+          scale: 1, // 畫布已鎖定 1280x720 原始高解析
+          width: 1280,
+          height: 720,
+          windowWidth: 1280,
+          windowHeight: 720,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false
+        });
+
+        wrapper.style.opacity = '0.001';
+        interactiveBtns.forEach(b => b.style.visibility = 'visible');
+
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            showToast('截圖生成失敗');
+            return;
+          }
+          try {
+            if (navigator.clipboard && navigator.clipboard.write) {
+              const item = new ClipboardItem({ 'image/png': blob });
+              await navigator.clipboard.write([item]);
+              showToast('📋 完美版 16:9 證書已複製至剪貼簿！可直接貼在 Word。');
+            } else {
+              showToast('瀏覽器不支援剪貼簿圖片寫入，請使用「另存為 JPG」！');
+            }
+          } catch (e) {
+            showToast('剪貼簿寫入受限，請直接點擊「另存為 JPG」下載證書！');
+          }
+        }, 'image/png');
+      } catch (err) {
+        showToast('截圖失敗，請稍候重試');
+      }
+    }
+
+    async function downloadCertificateImage() {
+      try {
+        await document.fonts.ready;
+        const interactiveBtns = certificateCard.querySelectorAll('.modal-interactive-btn');
+        interactiveBtns.forEach(b => b.style.visibility = 'hidden');
+
+        // 改為對隱藏的 16:9 容器進行截圖
+        const wrapper = document.getElementById('exportContainerWrapper');
+        wrapper.style.opacity = '1';
+        const exportTarget = document.getElementById('exportContainer');
+
+        const canvas = await html2canvas(exportTarget, {
+          scale: 1,
+          width: 1280,
+          height: 720,
+          windowWidth: 1280,
+          windowHeight: 720,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false
+        });
+
+        wrapper.style.opacity = '0.001';
+        interactiveBtns.forEach(b => b.style.visibility = 'visible');
+
+        const link = document.createElement('a');
+        link.download = `銘傳國中打字檢定成果證書_${currentMode}_${Date.now()}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('💾 完美版 16:9 證書圖片已成功下載！');
+      } catch (err) {
+        showToast('下載失敗，請稍後重試');
+      }
+    }
+
+    modeZhBtn.addEventListener('click', () => switchMode('zh'));
+    modeEnBtn.addEventListener('click', () => switchMode('en'));
+
+    startBtn.addEventListener('click', () => {
+      if (isTestRunning) return;
+      startTest();
+    });
+
+    overlayStartBtn.addEventListener('click', () => {
+      startTest();
+    });
+
+    finishBtn.addEventListener('click', () => {
+      if (isTestRunning) finishTest();
+    });
+
+    resetBtn.addEventListener('click', resetTest);
+
+    reopenModalBtn.addEventListener('click', () => {
+      if (lastResultSnapshot) {
+        showResultModal(lastResultSnapshot);
+      }
+    });
+
+    lessonSelect.addEventListener('change', (e) => {
+      const val = e.target.value;
+      const dict = currentMode === 'zh' ? ZH_LESSON_TEXTS : EN_LESSON_TEXTS;
+
+      if (val === 'custom') {
+        customTextInput.value = '';
+        customModalTitle.textContent = currentMode === 'zh' ? '輸入自訂中打測驗文章' : 'Input Custom English Passage';
+        customModalDesc.textContent = currentMode === 'zh' ? '系統將自動以每行 20 字進行排版。' : 'Auto word-wrapped with max 50 characters per line.';
+        customTextModal.classList.remove('opacity-0', 'pointer-events-none');
+      } else {
+        currentLesson = val;
+        fullText = dict[val] || dict['1'];
+        lines = getLinesForCurrentMode(fullText);
+        resetTest();
+      }
+    });
+
+    timeSelect.addEventListener('change', () => {
+      resetTest();
+    });
+
+    syncSheetBtn.addEventListener('click', () => {
+      if (isTestRunning) {
+        showToast('測驗進行中無法同步，請先重設測驗！');
+        return;
+      }
+      syncCloudLessons(true);
+    });
+
+    function setFontSize(size) {
+      currentFontSize = size;
+      [fontSmBtn, fontMdBtn, fontLgBtn].forEach(b => {
+        b.className = 'px-2 py-0.5 rounded text-slate-500 hover:text-slate-900 transition';
+      });
+      if (size === 'sm') fontSmBtn.className = 'px-2 py-0.5 rounded bg-white text-blue-600 shadow-sm transition';
+      if (size === 'md') fontMdBtn.className = 'px-2 py-0.5 rounded bg-white text-blue-600 shadow-sm transition';
+      if (size === 'lg') fontLgBtn.className = 'px-2 py-0.5 rounded bg-white text-blue-600 shadow-sm transition';
+      renderLines();
+      createOrUpdateDynamicInput();
+    }
+
+    fontSmBtn.addEventListener('click', () => setFontSize('sm'));
+    fontMdBtn.addEventListener('click', () => setFontSize('md'));
+    fontLgBtn.addEventListener('click', () => setFontSize('lg'));
+
+    confirmCustomBtn.addEventListener('click', () => {
+      const txt = customTextInput.value.trim();
+      if (txt.length < 5) {
+        showToast('自訂文章內容至少需 5 個字以上！');
+        return;
+      }
+      const dict = currentMode === 'zh' ? ZH_LESSON_TEXTS : EN_LESSON_TEXTS;
+      dict['custom'] = txt;
+      currentLesson = 'custom';
+      fullText = txt;
+      lines = getLinesForCurrentMode(fullText);
+      customTextModal.classList.add('opacity-0', 'pointer-events-none');
+      resetTest();
+    });
+
+    cancelCustomBtn.addEventListener('click', () => {
+      customTextModal.classList.add('opacity-0', 'pointer-events-none');
+      lessonSelect.value = currentLesson;
+    });
+
+    closeModalXBtn.addEventListener('click', closeResultModal);
+    closeModalBottomBtn.addEventListener('click', closeResultModal);
+    copyCertBtn.addEventListener('click', copyCertificateImage);
+    downloadCertBtn.addEventListener('click', downloadCertificateImage);
+
+    resultModal.addEventListener('click', (e) => {
+      if (e.target === resultModal) closeResultModal();
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateOverlayRules();
+      populateLessonSelect();
+      lines = getLinesForCurrentMode(fullText);
+      testDuration = parseInt(timeSelect.value, 10);
+      remainingTime = testDuration;
+      updateTimerDisplay(testDuration);
+      renderLines();
+      createOrUpdateDynamicInput();
+
+      syncCloudLessons(false);
+    });
+  </script>
+</body>
+</html>

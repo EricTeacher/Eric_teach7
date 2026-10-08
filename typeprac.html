@@ -178,7 +178,6 @@
       </div>
     </div>
   </header>
-
   <!-- 主內容區 -->
   <main class="flex-1 max-w-5xl w-full mx-auto px-2 sm:px-4 py-2 flex flex-col justify-between overflow-hidden relative">
     
@@ -289,7 +288,6 @@
       </div>
 
     </div>
-
     <!-- 虛擬鍵盤本體區 -->
     <div id="keyboardContainer" class="w-full bg-slate-900/90 border border-slate-800/80 rounded-2xl p-1.5 sm:p-2 md:p-3 shadow-2xl flex flex-col justify-center flex-shrink-0">
       <!-- 鍵盤狀態與指法說明 -->
@@ -400,7 +398,6 @@
       <span class="font-mono text-slate-400 font-medium">◎2026.10 v1.1</span>
     </footer>
   </main>
-
   <!-- 測驗成績結算彈窗 (Result Modal) -->
   <div id="resultModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden opacity-0 transition-opacity duration-200">
     <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-4 sm:p-5 shadow-2xl flex flex-col">
@@ -483,18 +480,20 @@
         <p id="submitResultMsg" class="text-[11px] text-center mt-1.5 hidden font-semibold"></p>
       </div>
 
-      <!-- 操作按鈕列 -->
+      <!-- 操作按鈕列 (整合「排行榜」按鈕) -->
       <div class="flex items-center gap-2">
         <button id="restartBtn" class="flex-1 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer">
           <i class="fa-solid fa-rotate-right"></i> 再測一次
         </button>
-        <button id="closeModalBtn" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition cursor-pointer">
+        <button id="modalLeaderboardBtn" class="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1 cursor-pointer">
+          <i class="fa-solid fa-trophy"></i> 排行榜
+        </button>
+        <button id="closeModalBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition cursor-pointer">
           關閉
         </button>
       </div>
     </div>
   </div>
-
   <!-- 排行榜彈窗 (Leaderboard Modal) -->
   <div id="leaderboardModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden opacity-0 transition-opacity duration-200">
     <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-4xl w-full p-4 sm:p-5 shadow-2xl flex flex-col max-h-[90vh]">
@@ -562,7 +561,6 @@
       </div>
     </div>
   </div>
-
   <script>
     // 預設後端資料庫 Web App 網址 (老師部署 GAS 後將網址填入單引號中)
     const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzI5nysvXwvvYbdOTet9xi3s6OWv5XDV14bki9QUMb8Tf4n4qJp5-B6XaYvnbEkKTGJcA/exec';
@@ -755,6 +753,7 @@
     const resultModal = document.getElementById('resultModal');
     const restartBtn = document.getElementById('restartBtn');
     const closeModalBtn = document.getElementById('closeModalBtn');
+    const modalLeaderboardBtn = document.getElementById('modalLeaderboardBtn');
     const finalDeviceBadge = document.getElementById('finalDeviceBadge');
     const finalCategoryBadge = document.getElementById('finalCategoryBadge');
     const finalModeBadge = document.getElementById('finalModeBadge');
@@ -774,7 +773,6 @@
     const leaderboardCategoryFilter = document.getElementById('leaderboardCategoryFilter');
     const leaderboardModeFilter = document.getElementById('leaderboardModeFilter');
     const leaderboardSortBy = document.getElementById('leaderboardSortBy');
-
     // 切換大類 (英文 vs 中文注音)
     function updateCategoryUI() {
       const cat = categorySelect.value;
@@ -922,7 +920,6 @@
         keyEl.classList.add('key-target-hint', 'ring-2', 'ring-cyan-400', 'ring-offset-2', 'ring-offset-slate-900');
       }
     }
-
     function handleInput(inputChar) {
       if (!gameState.isPlaying) return;
 
@@ -1083,7 +1080,6 @@
 
       nextQuestion();
     }
-
     function endTest() {
       clearInterval(gameState.timerId);
       gameState.timerId = null;
@@ -1217,7 +1213,6 @@
       const isLeaderboardOpen = leaderboardModal && !leaderboardModal.classList.contains('hidden');
       return isResultOpen || isLeaderboardOpen;
     }
-
     async function submitScoreToDatabase() {
       // 防重複提交檢查
       if (gameState.hasSubmittedCurrentRound) {
@@ -1376,6 +1371,19 @@
              m.indexOf('ㄇ') !== -1 || m.indexOf('ㄈ') !== -1 || m.indexOf('zh') !== -1;
     }
 
+    // 學生姓名隱私遮罩 (符合個資法與教育部規範)
+    function maskStudentName(name) {
+      if (!name) return '';
+      const str = String(name).trim();
+      const len = str.length;
+      if (len <= 1) return str;
+      if (len === 2) return str[0] + '○';
+      if (len === 3) return str[0] + '○' + str[2];
+      // 4 個字或以上 (複姓、原住民姓名、外文名稱或中英夾雜)
+      const middleMask = '○'.repeat(len - 2);
+      return str[0] + middleMask + str[len - 1];
+    }
+
     // 排序清單工具函式
     function sortRankList(list, sortBy) {
       return list.sort((a, b) => {
@@ -1395,7 +1403,6 @@
         }
       });
     }
-
     // 渲染單個清單區塊 (前 30 名，名次獨立起算)
     function buildRankListHtml(list, sortBy, titleText, iconClass, titleColor) {
       const top30 = list.slice(0, 30);
@@ -1449,7 +1456,7 @@
               ${rankBadge}
               <div>
                 <div class="font-bold text-slate-100 flex items-center gap-1 flex-wrap">
-                  <span>${escapeHtml(item.className || '')}班 ${escapeHtml(item.seatNumber || '')}號 ${escapeHtml(item.studentName || '')}</span>
+                  <span>${escapeHtml(item.className || '')}班 ${escapeHtml(item.seatNumber || '')}號 ${escapeHtml(maskStudentName(item.studentName || ''))}</span>
                   ${catBadgeHtml}
                   ${deviceBadgeHtml}
                   <span class="text-[9px] font-normal px-1 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 max-w-[120px] truncate" title="${escapeHtml(item.mode || '')}">
@@ -1606,8 +1613,7 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
     }
-
-    // 實體鍵盤監聽
+    // 實體鍵盤監聽 (修復 Caps Lock 與 Shift 誤判)
     window.addEventListener('keydown', (e) => {
       // 關鍵防護 1：若成績結算彈窗或排行榜彈窗開啟時，全面阻擋任何鍵盤重啟行為！
       if (isAnyModalOpen()) {
@@ -1622,6 +1628,16 @@
 
       // 如果正在輸入學生基本資料框，放行
       if (['studentClass', 'studentSeat', 'studentName'].includes(document.activeElement.id)) {
+        return;
+      }
+
+      // 功能鍵與修飾鍵白名單過濾 (防止 CapsLock、Shift、Alt、Ctrl 誤觸扣分或誤觸開始)
+      const ignoredControlKeys = [
+        'Shift', 'CapsLock', 'Control', 'Alt', 'Meta', 'Escape', 'Tab', 
+        'ContextMenu', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+        'Home', 'End', 'PageUp', 'PageDown', 'Insert'
+      ];
+      if (ignoredControlKeys.includes(e.key)) {
         return;
       }
 
@@ -1656,6 +1672,12 @@
         const zhKey = cap.getAttribute('data-zh');
         const keyKey = cap.getAttribute('data-key');
         if (!enKey && !zhKey && !keyKey) return;
+
+        // 觸控點選時過濾輔助功能鍵
+        const ignoredTouchKeys = ['Shift', 'CapsLock', 'Caps', 'Ctrl', 'Alt', 'Tab', 'Backspace', 'Enter'];
+        if (ignoredTouchKeys.includes(keyKey) || ignoredTouchKeys.includes(enKey)) {
+          return;
+        }
 
         if (!gameState.isPlaying) {
           startTest();
@@ -1732,6 +1754,18 @@
     });
 
     closeModalBtn.addEventListener('click', closeResultModal);
+
+    // 成績彈窗內的「查看排行榜」按鈕
+    if (modalLeaderboardBtn) {
+      modalLeaderboardBtn.addEventListener('click', () => {
+        closeResultModal();
+        setTimeout(() => {
+          leaderboardModal.classList.remove('hidden');
+          setTimeout(() => leaderboardModal.classList.remove('opacity-0'), 20);
+          loadLeaderboardData();
+        }, 220);
+      });
+    }
 
     // 頂部與中央「本次成績」按鈕
     showLastResultBtn.addEventListener('click', openResultModal);

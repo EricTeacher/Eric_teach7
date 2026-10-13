@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Binary Numbers Game - 二進制攻防戰</title>
+    <!-- 網頁向量 Favicon (直接以內嵌 SVG Data URI 形式載入，不需外部圖檔) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%230284c7'/%3E%3Cstop offset='100%25' stop-color='%23082f49'/%3E%3C/linearGradient%3E%3ClinearGradient id='ring' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2338bdf8'/%3E%3Cstop offset='100%25' stop-color='%230284c7'/%3E%3C/linearGradient%3E%3ClinearGradient id='arrow' x1='0%25' y1='100%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%23818cf8'/%3E%3Cstop offset='100%25' stop-color='%23c084fc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='30' fill='%23031326' stroke='url(%23ring)' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='24' fill='url(%23bg)' stroke='%230284c7' stroke-width='2'/%3E%3Cpath d='M23 23 L14 32 L23 41' fill='none' stroke='%23ffffff' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M35 30 L42 36 L35 42' fill='none' stroke='%23ffffff' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M26 39 L37 25 L33 22 L49 17 L44 33 L40 29 L29 42 Z' fill='url(%23arrow)' stroke='%23ffffff' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js 音效庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700;800;900&display=swap');
+
+        :root {
+            --bg-dark: #090e17;
+            --board-bg: #0d1527;
+            --capsule-off: #24354a;
+            --capsule-on: #b91c1c;
+            --capsule-on-glow: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-dark);
+            color: #f1f5f9;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .font-tech {
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        /* 二進制膠囊本體 */
+        .capsule-btn {
+            position: relative;
+            border-radius: 9999px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+            cursor: pointer;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.15), 0 3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .capsule-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* 頂部位元指示橘標 */
+        .capsule-pip {
+            width: 40%;
+            height: 4px;
+            border-radius: 9999px;
+            background: #f97316;
+            margin-bottom: 2px;
+            box-shadow: 0 0 5px rgba(249, 115, 22, 0.8);
+            transition: all 0.2s;
+        }
+
+        /* 0 狀態：深藍灰沈靜膠囊 */
+        .capsule-0 {
+            background: linear-gradient(180deg, #334960 0%, #1e2e42 100%);
+            border: 1.5px solid #486585;
+            color: #94a3b8;
+        }
+
+        /* 1 狀態：亮紅橘發光膠囊 (點擊立即生效) */
+        .capsule-1 {
+            background: linear-gradient(180deg, #dc2626 0%, #991b1b 100%) !important;
+            border: 2px solid #f87171 !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.75), inset 0 1px 3px rgba(255, 255, 255, 0.5) !important;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+        }
+
+        .capsule-1 .capsule-pip {
+            background: #fef08a !important;
+            box-shadow: 0 0 8px #fde047 !important;
+        }
+
+        /* 新行由底端浮現動效 */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .row-enter-anim {
+            animation: slideInUp 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* 答對時 0.5 秒綠光流動閃爍動效 */
+        @keyframes successFlashPulse {
+            0% {
+                background-color: rgba(16, 185, 129, 0.15);
+                box-shadow: inset 0 0 0 2px #10b981, 0 0 20px rgba(16, 185, 129, 0.6);
+            }
+            50% {
+                background-color: rgba(16, 185, 129, 0.45);
+                box-shadow: inset 0 0 0 3px #34d399, 0 0 30px rgba(52, 211, 153, 0.9);
+                transform: scale(1.02);
+            }
+            100% {
+                background-color: rgba(16, 185, 129, 0.2);
+                box-shadow: inset 0 0 0 2px #10b981, 0 0 15px rgba(16, 185, 129, 0.5);
+                opacity: 0;
+                transform: scale(0.92);
+            }
+        }
+
+        .row-success-flash {
+            animation: successFlashPulse 0.5s ease-in-out forwards !important;
+            pointer-events: none;
+        }
+
+        /* 警戒高度時外框紅色告警呼吸燈 */
+        @keyframes dangerGlow {
+            0%, 100% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+            50% { border-color: rgba(239, 68, 68, 0.95); box-shadow: 0 0 28px rgba(239, 68, 68, 0.6); }
+        }
+
+        .board-danger {
+            animation: dangerGlow 1s infinite ease-in-out;
+        }
+
+        .glass-calc {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 25px rgba(14, 165, 233, 0.2);
+        }
+
+        .keypad-btn {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(71, 85, 105, 0.7);
+            color: #f8fafc;
+            border-radius: 12px;
+            padding: 12px 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            transition: all 0.1s;
+        }
+
+        .keypad-btn:hover {
+            background: rgba(51, 65, 85, 0.95);
+            border-color: #38bdf8;
+        }
+
+        .keypad-btn:active {
+            transform: scale(0.93);
+            background: #0284c7;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col justify-between p-2 sm:p-4 select-none">
+
+    <!-- 頂部資訊 HUD 列 -->
+    <header class="w-full max-w-2xl mx-auto flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-2xl px-3.5 py-2 sm:px-5 sm:py-2.5 shadow-lg flex-shrink-0">
+        <!-- 暫停鍵與音效切換 -->
+        <div class="flex items-center gap-2">
+            <button id="btnPause" type="button" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 font-tech font-bold text-xs sm:text-sm border border-slate-700 transition active:scale-95 flex items-center gap-1.5 shadow">
+                <span>⏸</span>
+                <span class="hidden sm:inline">PAUSE</span>
+            </button>
+            <button id="btnSound" type="button" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-tech text-xs sm:text-sm border border-slate-700 transition flex items-center justify-center shadow">
+                <span id="soundLabel">🔊</span>
+            </button>
+            <button id="btnHelp" type="button" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-tech font-bold text-xs sm:text-sm border border-slate-700 transition flex items-center gap-1 shadow">
+                <span>💡</span>
+                <span class="hidden sm:inline">說明</span>
+            </button>
+        </div>
+
+        <!-- 關卡、時間與分數 -->
+        <div class="flex items-center space-x-3 sm:space-x-5 text-right font-tech">
+            <div>
+                <div class="text-[9px] sm:text-[10px] text-slate-400 tracking-wider">TIME</div>
+                <div id="statTime" class="text-base sm:text-xl font-extrabold text-cyan-400 leading-none">00:00</div>
+            </div>
+            <div>
+                <div class="text-[9px] sm:text-[10px] text-slate-400 tracking-wider">LEVEL</div>
+                <div id="statLevel" class="text-base sm:text-xl font-extrabold text-white leading-none">1</div>
+            </div>
+            <div>
+                <div class="text-[9px] sm:text-[10px] text-slate-400 tracking-wider">SCORE</div>
+                <div id="statScore" class="text-base sm:text-xl font-extrabold text-emerald-400 leading-none">0</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要遊戲主體 (自適應，嚴格限制不產生捲軸) -->
+    <main class="w-full max-w-2xl mx-auto flex-1 flex flex-col items-center justify-center my-1.5 overflow-hidden">
+        
+        <!-- 遊戲主面板 -->
+        <div id="gameBoardWrapper" class="w-full bg-[#0d1527] border-2 border-slate-700/80 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 flex flex-col justify-between shadow-2xl relative transition-all duration-300 h-full max-h-[580px]">
+            
+            <!-- 頂端警戒紅線指示器 -->
+            <div class="w-full flex items-center justify-between px-2 py-0.5 border-b border-red-500/40 text-[10px] sm:text-xs font-tech text-red-400 font-bold tracking-widest flex-shrink-0">
+                <span class="flex items-center gap-1">
+                    <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                    <span>DANGER LINE (MAX 7 ROWS)</span>
+                </span>
+                <span id="dangerWarningText" class="text-slate-400 font-normal">SAFE</span>
+            </div>
+
+            <!-- 8 位元權重頂部標題對照列 (128, 64, 32, 16, 8, 4, 2, 1) -->
+            <div class="w-full flex items-center pt-1.5 pb-1 flex-shrink-0">
+                <!-- 8 位元網格對齊 -->
+                <div class="grid grid-cols-8 gap-1 sm:gap-2 flex-1 text-center font-tech font-bold text-xs sm:text-sm">
+                    <div class="text-sky-300">128</div>
+                    <div class="text-amber-400">64</div>
+                    <div class="text-sky-300">32</div>
+                    <div class="text-amber-400">16</div>
+                    <div class="text-sky-300">8</div>
+                    <div class="text-amber-400">4</div>
+                    <div class="text-sky-300">2</div>
+                    <div class="text-amber-400">1</div>
+                </div>
+                <!-- 右側目標區留白對齊寬度 -->
+                <div class="w-16 sm:w-20 text-center font-tech text-[10px] sm:text-xs text-slate-400 font-bold ml-1 sm:ml-2">
+                    TARGET
+                </div>
+            </div>
+
+            <!-- 題目行由下往上堆疊放置區 (Bottom-to-Top flex-col-reverse) -->
+            <div id="boardContainer" class="flex-1 flex flex-col-reverse justify-start gap-1 sm:gap-2 overflow-hidden py-1 w-full relative">
+                <!-- 動態行將注入於此 -->
+            </div>
+
+            <!-- 地面基座指示條 -->
+            <div class="w-full h-1.5 bg-gradient-to-r from-sky-600 via-emerald-500 to-sky-600 rounded-full opacity-70 flex-shrink-0 mt-0.5"></div>
+        </div>
+
+        <!-- 底部模式狀態與提示 -->
+        <div class="w-full flex items-center justify-between gap-2 mt-1 px-2 flex-shrink-0">
+            <div class="flex items-center gap-1 text-[11px] sm:text-xs text-slate-400 truncate">
+                <span class="font-bold text-sky-400">模式說明：</span>
+                <span id="gameplayDesc" class="truncate">雙向混合：隨機給出十進制目標或二進制解碼</span>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <label class="flex items-center gap-1 text-[10px] sm:text-xs text-slate-400 cursor-pointer">
+                    <input type="checkbox" id="chkShowSum" checked class="rounded accent-sky-500 w-3.5 h-3.5">
+                    <span>即時計算提示</span>
+                </label>
+                <div class="text-[10px] sm:text-xs px-2 py-0.5 bg-slate-800 text-amber-300 border border-slate-700 rounded-lg flex items-center gap-1">
+                    <span>🔒 模式已鎖定：</span>
+                    <span id="lockedModeName" class="font-bold text-white">雙向混合</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 浮動毛玻璃小算盤 (輸入十進制專用) -->
+    <div id="glassKeypad" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="glass-calc rounded-3xl p-5 max-w-xs w-full shadow-2xl relative text-center">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-sky-400 font-tech tracking-wider">🔢 DECIMAL INPUT</span>
+                <button type="button" id="btnKeypadCloseX" class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm transition">✕</button>
+            </div>
+            <div class="mb-2 px-2.5 py-1.5 bg-slate-900/60 rounded-xl border border-slate-700/60 text-left">
+                <div class="text-[10px] text-slate-400 font-tech">TARGET BINARY:</div>
+                <div id="keypadBitHint" class="text-xs font-mono font-bold text-amber-300 tracking-wider">00000000</div>
+            </div>
+            <div class="mb-3 p-2.5 bg-slate-950/80 rounded-2xl border border-sky-500/40 text-right">
+                <div id="keypadScreen" class="text-3xl font-extrabold font-mono text-cyan-300 tracking-widest min-h-[36px]">0</div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 font-tech font-bold text-lg mb-3">
+                <button type="button" class="keypad-btn" data-key="1">1</button>
+                <button type="button" class="keypad-btn" data-key="2">2</button>
+                <button type="button" class="keypad-btn" data-key="3">3</button>
+                <button type="button" class="keypad-btn" data-key="4">4</button>
+                <button type="button" class="keypad-btn" data-key="5">5</button>
+                <button type="button" class="keypad-btn" data-key="6">6</button>
+                <button type="button" class="keypad-btn" data-key="7">7</button>
+                <button type="button" class="keypad-btn" data-key="8">8</button>
+                <button type="button" class="keypad-btn" data-key="9">9</button>
+                <button type="button" class="keypad-btn text-rose-400" id="btnKeypadClear">C</button>
+                <button type="button" class="keypad-btn" data-key="0">0</button>
+                <button type="button" class="keypad-btn text-amber-400" id="btnKeypadBackspace">⌫</button>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" id="btnKeypadCancel" class="w-1/3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold transition font-tech">取消</button>
+                <button type="button" id="btnKeypadSubmit" class="w-2/3 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-400 hover:to-emerald-400 text-white font-bold text-sm shadow-lg transition active:scale-95 font-tech">確認 (ENTER)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 開始遊戲畫面彈窗 (預設顯示) -->
+    <div id="modalStart" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-sky-500/40 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl">
+            <div class="w-14 h-14 mx-auto mb-3 bg-sky-950/80 rounded-2xl flex items-center justify-center border border-sky-400 text-2xl shadow-lg">
+                ⚡
+            </div>
+            <h2 class="text-2xl font-extrabold font-tech text-white mb-1 tracking-wider">二進制攻防戰</h2>
+            <p class="text-xs text-slate-400 mb-4">掌握位元權重，阻止方塊向上堆滿！</p>
+
+            <div class="bg-slate-800/70 p-3 rounded-2xl border border-slate-700/80 text-left text-xs text-slate-300 space-y-1.5 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-amber-400 font-bold">🎮 核心規則：</span>
+                    <span>題目會由<strong>下方不斷向上堆疊</strong>。</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-emerald-400 font-bold">🎯 消除方式：</span>
+                    <span>切換 0/1 膠囊或小算盤輸入十進制！</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-rose-400 font-bold">⚠️ 警戒限制：</span>
+                    <span>累積達 7 行觸碰頂端時即判定挑戰結束！</span>
+                </div>
+            </div>
+
+            <!-- 模式選擇區域 (預設為混合模式，開始後鎖定) -->
+            <div class="mb-4 text-left">
+                <label class="block text-xs font-bold text-slate-300 mb-2 font-tech tracking-wide flex items-center justify-between">
+                    <span>選擇遊戲模式：</span>
+                    <span class="text-[10px] text-amber-400 font-normal">選定後遊戲中鎖定</span>
+                </label>
+                <div class="grid grid-cols-3 gap-1.5" id="startModeSelector">
+                    <button type="button" data-mode="HYBRID" class="mode-select-btn p-2 rounded-xl border-2 border-sky-400 bg-sky-950/60 text-white font-tech text-xs font-bold transition flex flex-col items-center gap-1 active:scale-95 shadow">
+                        <span class="text-base">🔀</span>
+                        <span>雙向混合</span>
+                        <span class="text-[9px] text-sky-300 font-normal">推薦模式</span>
+                    </button>
+                    <button type="button" data-mode="MATCH" class="mode-select-btn p-2 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 font-tech text-xs font-bold transition flex flex-col items-center gap-1 active:scale-95 hover:border-slate-500">
+                        <span class="text-base">🔴</span>
+                        <span>點選二進制</span>
+                        <span class="text-[9px] text-slate-400 font-normal">經典拼湊</span>
+                    </button>
+                    <button type="button" data-mode="DECODE" class="mode-select-btn p-2 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 font-tech text-xs font-bold transition flex flex-col items-center gap-1 active:scale-95 hover:border-slate-500">
+                        <span class="text-base">🔢</span>
+                        <span>輸入十進制</span>
+                        <span class="text-[9px] text-slate-400 font-normal">算盤解碼</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <button id="btnStartGame" type="button" class="w-full py-3 bg-gradient-to-r from-sky-500 via-sky-600 to-emerald-500 hover:from-sky-400 hover:to-emerald-400 font-extrabold font-tech text-white rounded-xl shadow-xl active:scale-95 transition text-base tracking-wider cursor-pointer">
+                    ▶ 開始遊戲 (START)
+                </button>
+                <button id="btnStartHelp" type="button" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-xl font-bold text-xs active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer">
+                    💡 遊戲規則與教學 (How to Play)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 暫停選單彈窗 -->
+    <div id="modalPause" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xs w-full p-6 text-center shadow-2xl">
+            <div class="w-12 h-12 mx-auto mb-3 bg-amber-950/80 rounded-2xl flex items-center justify-center border border-amber-500 text-2xl">
+                ⏸️
+            </div>
+            <h2 class="text-xl font-bold font-tech text-amber-400 mb-1">遊戲暫停</h2>
+            <p class="text-xs text-slate-400 mb-5">題目生成與計時已暫停</p>
+            <div class="flex flex-col gap-2.5">
+                <button id="btnResume" type="button" class="w-full py-2.5 bg-sky-600 hover:bg-sky-500 font-bold font-tech text-white rounded-xl shadow transition active:scale-95 text-sm cursor-pointer">
+                    ▶ 繼續遊戲 (Resume)
+                </button>
+                <button id="btnRestartFromPause" type="button" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 rounded-xl font-bold font-tech transition active:scale-95 text-sm cursor-pointer">
+                    🔄 重新開始 (Restart)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遊戲規則與教學彈窗 (高層級 z-[70]，確保隨時可打開) -->
+    <div id="modalHelp" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-5 text-slate-200 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <h2 class="text-lg font-bold font-tech text-sky-400 mb-3 flex items-center gap-2">
+                <span>📘</span> 遊戲規則、計分與難度說明
+            </h2>
+            <div class="space-y-3 text-xs sm:text-sm text-slate-300">
+                <div class="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/80">
+                    <h3 class="font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+                        <span>⚡</span> 8 位元二進制權重對照
+                    </h3>
+                    <div class="grid grid-cols-8 gap-1 text-center font-tech font-bold py-2 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px]">
+                        <div class="text-sky-300">128</div>
+                        <div class="text-amber-400">64</div>
+                        <div class="text-sky-300">32</div>
+                        <div class="text-amber-400">16</div>
+                        <div class="text-sky-300">8</div>
+                        <div class="text-amber-400">4</div>
+                        <div class="text-sky-300">2</div>
+                        <div class="text-amber-400">1</div>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                        每個亮紅色的「1」代表將上方對應數值加總。例如：16 + 8 + 2 = 26。
+                    </p>
+                </div>
+
+                <div class="bg-slate-800/80 p-3 rounded-2xl border border-slate-700/80">
+                    <h3 class="font-bold text-emerald-300 mb-1 flex items-center gap-1.5">
+                        <span>🎯</span> 計分公式與升級機制
+                    </h3>
+                    <ul class="list-disc list-inside space-y-1 text-[11px] sm:text-xs text-slate-300">
+                        <li><span class="text-sky-300 font-bold">單題得分</span> = 目標數值 + (關卡等級 × 20 分)。</li>
+                        <li><span class="text-emerald-300 font-bold">升級機制</span>：每成功消除 <strong>5 列</strong>自動升 1 級。</li>
+                        <li><span class="text-rose-300 font-bold">生成節奏</span>：第 1 關間隔為 9 秒，後續關卡節奏微幅調整但<strong>最低維持 6 秒以上</strong>。</li>
+                        <li><span class="text-amber-300 font-bold">安全空間</span>：最多可容納 <strong>6 行</strong>，累積至 <strong>7 行</strong>即結算成績。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button id="btnHelpClose" type="button" class="w-full py-2.5 bg-sky-600 hover:bg-sky-500 font-bold font-tech text-white rounded-xl shadow transition active:scale-95 text-sm cursor-pointer">
+                    關閉說明 (Close)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遊戲結束彈窗 (含模式與時間紀錄) -->
+    <div id="modalGameOver" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-emerald-500/40 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative overflow-hidden">
+            <!-- 頂部榮譽獎盃與大標題 -->
+            <div class="w-14 h-14 mx-auto mb-2 bg-gradient-to-br from-amber-400/20 to-emerald-500/20 rounded-2xl flex items-center justify-center border border-amber-400/50 text-3xl shadow-lg">
+                🏆
+            </div>
+            <h2 class="text-lg font-bold font-tech text-slate-300 tracking-wider">CHALLENGE FINISHED</h2>
+            <div class="text-[11px] text-slate-400 mb-3">挑戰完成 · 成果結算</div>
+
+            <!-- 核心視覺焦點：超大最終得分 + LEVEL -->
+            <div class="bg-gradient-to-b from-slate-800/90 to-slate-950/90 p-4 rounded-2xl border border-emerald-500/30 mb-4 shadow-inner">
+                <div class="text-[11px] font-tech text-emerald-400/90 tracking-widest uppercase font-bold">FINAL SCORE</div>
+                <div id="finalScore" class="text-5xl font-black font-tech text-emerald-300 tracking-tight my-1 drop-shadow-[0_0_15px_rgba(52,211,153,0.4)]">0</div>
+                <div class="flex items-center justify-center gap-1.5 mt-1 pt-2 border-t border-slate-700/60 font-tech">
+                    <span class="text-xs text-slate-400">REACHED LEVEL</span>
+                    <span id="finalLevel" class="text-xl font-extrabold text-amber-300 px-2 py-0.5 rounded-lg bg-amber-400/10 border border-amber-400/30">1</span>
+                </div>
+            </div>
+
+            <!-- 次要詳細數據 (小字號精巧呈現) -->
+            <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60 mb-5 space-y-1.5 font-tech text-left text-xs">
+                <div class="flex justify-between items-center text-slate-400">
+                    <span class="text-[11px]">遊玩模式</span>
+                    <span id="finalMode" class="font-semibold text-sky-400">雙向混合模式</span>
+                </div>
+                <div class="flex justify-between items-center text-slate-400">
+                    <span class="text-[11px]">存活時間</span>
+                    <span id="finalTime" class="font-semibold text-cyan-300">00:00</span>
+                </div>
+                <div class="flex justify-between items-center text-slate-400">
+                    <span class="text-[11px]">消除行數</span>
+                    <span id="finalLines" class="font-semibold text-slate-200">0 行</span>
+                </div>
+            </div>
+
+            <button id="btnRestartGame" type="button" class="w-full py-3 bg-gradient-to-r from-sky-600 via-emerald-600 to-sky-600 hover:from-sky-500 hover:to-emerald-500 font-bold font-tech text-white rounded-xl shadow-lg active:scale-95 transition text-base cursor-pointer tracking-wider">
+                🔄 再次挑戰 (Play Again)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 8 位元權重常數
+        const BIT_VALUES = [128, 64, 32, 16, 8, 4, 2, 1];
+        const MAX_ROWS = 7; // 畫面最高允許累積行數：達到 7 行以上即結束
+
+        // 核心狀態機
+        const GameState = {
+            hasStarted: false,
+            score: 0,
+            level: 1,
+            clearedLines: 0,
+            isPaused: false,
+            isGameOver: false,
+            soundEnabled: true,
+            showSumHelper: true,
+            mode: 'HYBRID', // 'HYBRID' | 'MATCH' | 'DECODE'
+            elapsedSeconds: 0,
+            gameTimer: null,
+            rows: [],
+            nextSpawnTimer: null,
+            activeInputRowId: null,
+            currentKeypadValue: '',
+            pausedByHelp: false
+        };
+
+        const MODE_NAMES = {
+            'HYBRID': '雙向混合模式',
+            'MATCH': '點選二進制',
+            'DECODE': '十進制解碼'
+        };
+
+        // 音訊合成器變數
+        let audioInitialized = false;
+        let sfxToggle = null;
+        let sfxClear = null;
+        let sfxError = null;
+        let bgmSynth = null;
+        let bgmTimer = null;
+        let bgmBeat = 0;
+
+        // 安全播放音效輔助函式
+        function safeAudio(fn) {
+            if (!GameState.soundEnabled) return;
+            try { fn(); } catch (e) { /* 靜態保護防止阻止主流程 */ }
+        }
+
+        // 初始化 Tone.js 音效引擎
+        function initAudio() {
+            if (audioInitialized) return;
+            try {
+                Tone.start();
+                sfxToggle = new Tone.Synth({
+                    oscillator: { type: 'sine' },
+                    envelope: { attack: 0.005, decay: 0.08, sustain: 0, release: 0.05 }
+                }).toDestination();
+                sfxToggle.volume.value = -6;
+
+                sfxClear = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'triangle' },
+                    envelope: { attack: 0.01, decay: 0.25, sustain: 0.1, release: 0.3 }
+                }).toDestination();
+                sfxClear.volume.value = -3;
+
+                sfxError = new Tone.Synth({
+                    oscillator: { type: 'sawtooth' },
+                    envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 }
+                }).toDestination();
+                sfxError.volume.value = -4;
+
+                bgmSynth = new Tone.MembraneSynth().toDestination();
+                bgmSynth.volume.value = -12;
+
+                audioInitialized = true;
+                startBgmLoop();
+            } catch (err) {
+                console.warn('音效引擎初始化略過:', err);
+            }
+        }
+
+        // 輕量 BGM 與心跳警戒節奏
+        function startBgmLoop() {
+            if (bgmTimer) clearInterval(bgmTimer);
+            bgmTimer = setInterval(() => {
+                if (!GameState.hasStarted || GameState.isPaused || GameState.isGameOver || !GameState.soundEnabled) return;
+                bgmBeat = (bgmBeat + 1) % 4;
+                const isDangerous = GameState.rows.length >= 6;
+
+                safeAudio(() => {
+                    if (isDangerous) {
+                        // 瀕死緊張急促警報雙拍
+                        if (bgmBeat % 2 === 0) bgmSynth.triggerAttackRelease('A2', '16n');
+                        else bgmSynth.triggerAttackRelease('C3', '16n');
+                    } else {
+                        // 平穩電子脈衝低音
+                        if (bgmBeat === 0) bgmSynth.triggerAttackRelease('C2', '8n');
+                        else if (bgmBeat === 2) bgmSynth.triggerAttackRelease('G2', '8n');
+                    }
+                });
+            }, 600);
+        }
+
+        function playSound(type) {
+            safeAudio(() => {
+                if (!audioInitialized) return;
+                const now = Tone.now();
+                if (type === 'toggle') {
+                    sfxToggle.triggerAttackRelease('E5', '32n', now);
+                } else if (type === 'clear') {
+                    sfxClear.triggerAttackRelease(['C5', 'E5', 'G5', 'C6'], '16n', now);
+                } else if (type === 'error') {
+                    sfxError.triggerAttackRelease('G#2', '16n', now);
+                }
+            });
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function startGameTimer() {
+            if (GameState.gameTimer) clearInterval(GameState.gameTimer);
+            GameState.gameTimer = setInterval(() => {
+                if (!GameState.isPaused && !GameState.isGameOver && GameState.hasStarted) {
+                    GameState.elapsedSeconds++;
+                    const statTime = document.getElementById('statTime');
+                    if (statTime) statTime.innerText = formatTime(GameState.elapsedSeconds);
+                }
+            }, 1000);
+        }
+
+        function stopGameTimer() {
+            if (GameState.gameTimer) clearInterval(GameState.gameTimer);
+        }
+
+        // 依據關卡計算生成速度 (第 1 關 9 秒，每關微幅縮短 0.6 秒，極限值保證在 6.0 秒以上)
+        function calculateIntervalForLevel(level) {
+            return Math.max(6000, 9000 - (level - 1) * 600);
+        }
+
+        // 依據關卡隨機生成題目數值
+        function generateTargetForLevel(level) {
+            if (level === 1) {
+                return Math.floor(Math.random() * 15) + 1; // 1 ~ 15
+            } else if (level === 2) {
+                return Math.floor(Math.random() * 31) + 1; // 1 ~ 31
+            } else if (level === 3) {
+                return Math.floor(Math.random() * 63) + 1; // 1 ~ 63
+            } else if (level === 4) {
+                return Math.floor(Math.random() * 127) + 1; // 1 ~ 127
+            }
+            return Math.floor(Math.random() * 254) + 1; // 1 ~ 254
+        }
+
+        function resetSpawnTimer() {
+            if (GameState.nextSpawnTimer) clearInterval(GameState.nextSpawnTimer);
+            const interval = calculateIntervalForLevel(GameState.level);
+            GameState.nextSpawnTimer = setInterval(() => {
+                if (!GameState.isPaused && !GameState.isGameOver && GameState.hasStarted) {
+                    spawnNewRow();
+                }
+            }, interval);
+        }
+
+        function spawnNewRow() {
+            if (GameState.isGameOver || GameState.isPaused) return;
+
+            // 檢查是否已達到最高行數 7 行 -> 觸頂結束遊戲
+            if (GameState.rows.length >= MAX_ROWS) {
+                triggerGameOver();
+                return;
+            }
+
+            const targetVal = generateTargetForLevel(GameState.level);
+            let rowType = 'MATCH';
+
+            if (GameState.mode === 'HYBRID') {
+                rowType = Math.random() < 0.5 ? 'MATCH' : 'DECODE';
+            } else if (GameState.mode === 'DECODE') {
+                rowType = 'DECODE';
+            } else {
+                rowType = 'MATCH';
+            }
+
+            // 若為解碼題，預先將位元填入代表目標值
+            const bits = [0, 0, 0, 0, 0, 0, 0, 0];
+            if (rowType === 'DECODE') {
+                for (let i = 0; i < 8; i++) {
+                    if ((targetVal & BIT_VALUES[i]) !== 0) {
+                        bits[i] = 1;
+                    }
+                }
+            }
+
+            const newRow = {
+                id: 'row_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                type: rowType,
+                target: targetVal,
+                bits: bits,
+                isClearing: false
+            };
+
+            // 新行由下方推入 (rows 陣列新增至開頭，配合 flex-col-reverse)
+            GameState.rows.unshift(newRow);
+
+            renderRows();
+
+            // 若推入後達到 7 行即結束遊戲
+            if (GameState.rows.length >= MAX_ROWS) {
+                triggerGameOver();
+            }
+        }
+
+        // 更新警戒標籤與外框發光
+        function updateDangerState() {
+            const count = GameState.rows.length;
+            const wrapper = document.getElementById('gameBoardWrapper');
+            const warningText = document.getElementById('dangerWarningText');
+
+            if (count >= 6) {
+                if (wrapper) wrapper.classList.add('board-danger');
+                if (warningText) {
+                    warningText.innerText = `CRITICAL: ${count}/${MAX_ROWS}`;
+                    warningText.className = 'text-red-400 font-bold animate-pulse';
+                }
+            } else if (count >= 4) {
+                if (wrapper) wrapper.classList.remove('board-danger');
+                if (warningText) {
+                    warningText.innerText = `WARNING: ${count}/${MAX_ROWS}`;
+                    warningText.className = 'text-amber-400 font-bold';
+                }
+            } else {
+                if (wrapper) wrapper.classList.remove('board-danger');
+                if (warningText) {
+                    warningText.innerText = `SAFE: ${count}/${MAX_ROWS}`;
+                    warningText.className = 'text-slate-400 font-normal';
+                }
+            }
+        }
+
+        function calculateCurrentSum(bits) {
+            let sum = 0;
+            for (let i = 0; i < 8; i++) {
+                if (bits[i] === 1) sum += BIT_VALUES[i];
+            }
+            return sum;
+        }
+
+        function renderRows() {
+            const container = document.getElementById('boardContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            GameState.rows.forEach((row) => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'w-full flex items-center bg-slate-900/90 hover:bg-slate-850 border border-slate-700/70 rounded-xl px-1 sm:px-2 py-1 transition-all row-enter-anim flex-shrink-0';
+                rowEl.id = row.id;
+
+                // 8 個位元膠囊按鈕區
+                const bitsGrid = document.createElement('div');
+                bitsGrid.className = 'grid grid-cols-8 gap-1 sm:gap-2 flex-1';
+
+                for (let b = 0; b < 8; b++) {
+                    const bitBtn = document.createElement('button');
+                    bitBtn.type = 'button';
+                    const isBitOne = row.bits[b] === 1;
+
+                    // 膠囊大小適中精緻 (高度 clamp 在 36px ~ 50px)
+                    bitBtn.className = `capsule-btn ${isBitOne ? 'capsule-1' : 'capsule-0'} h-9 sm:h-11 w-full text-xs sm:text-sm font-bold font-tech`;
+                    bitBtn.id = `${row.id}_bit_${b}`;
+
+                    // 膠囊頂部橘標 + 數值
+                    const pip = document.createElement('div');
+                    pip.className = 'capsule-pip';
+                    const label = document.createElement('span');
+                    label.innerText = isBitOne ? '1' : '0';
+
+                    bitBtn.appendChild(pip);
+                    bitBtn.appendChild(label);
+
+                    // 點選二進制題目時允許點擊切換
+                    if (row.type === 'MATCH' && !row.isClearing) {
+                        bitBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            handleBitClick(row.id, b);
+                        };
+                    } else {
+                        bitBtn.style.cursor = 'default';
+                    }
+
+                    bitsGrid.appendChild(bitBtn);
+                }
+
+                rowEl.appendChild(bitsGrid);
+
+                // 右側目標 / 輸入解碼區
+                const targetArea = document.createElement('div');
+                targetArea.className = 'w-16 sm:w-20 flex flex-col items-center justify-center ml-1 sm:ml-2 flex-shrink-0';
+
+                const curSum = calculateCurrentSum(row.bits);
+
+                if (row.type === 'MATCH') {
+                    // 目標十進制數字
+                    const targetNum = document.createElement('div');
+                    targetNum.className = 'text-base sm:text-xl font-extrabold font-tech text-cyan-300 leading-tight';
+                    targetNum.innerText = row.target;
+                    targetArea.appendChild(targetNum);
+
+                    // 即時計算提示 (防止被邊界切角)
+                    if (GameState.showSumHelper) {
+                        const hint = document.createElement('div');
+                        hint.className = 'text-[9px] sm:text-[10px] font-tech text-slate-400 mt-0.5 leading-none';
+                        hint.innerText = `計:${curSum}`;
+                        targetArea.appendChild(hint);
+                    }
+                } else {
+                    // 解碼題：顯示 ??? 按鈕，點擊彈出毛玻璃算盤
+                    const decodeBtn = document.createElement('button');
+                    decodeBtn.type = 'button';
+                    decodeBtn.className = 'px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/60 text-amber-300 font-tech font-extrabold text-xs sm:text-sm transition active:scale-95 shadow cursor-pointer';
+                    decodeBtn.innerText = '???';
+                    decodeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openKeypad(row.id);
+                    };
+                    targetArea.appendChild(decodeBtn);
+
+                    const hint = document.createElement('div');
+                    hint.className = 'text-[9px] font-tech text-amber-400/80 mt-0.5 leading-none';
+                    hint.innerText = '輸入10進制';
+                    targetArea.appendChild(hint);
+                }
+
+                rowEl.appendChild(targetArea);
+                container.appendChild(rowEl);
+            });
+
+            updateDangerState();
+        }
+
+        function handleBitClick(rowId, bitIndex) {
+            if (GameState.isGameOver || GameState.isPaused) return;
+            const row = GameState.rows.find(r => r.id === rowId);
+            if (!row || row.isClearing) return;
+
+            // 切換位元
+            const nextState = row.bits[bitIndex] === 0 ? 1 : 0;
+            row.bits[bitIndex] = nextState;
+
+            // 關鍵修復：立即更新該顆膠囊的 DOM 為紅色 '1' 或 '0'，確保學生即刻看見回饋！
+            const targetBtn = document.getElementById(`${rowId}_bit_${bitIndex}`);
+            if (targetBtn) {
+                if (nextState === 1) {
+                    targetBtn.classList.remove('capsule-0');
+                    targetBtn.classList.add('capsule-1');
+                    const label = targetBtn.querySelector('span');
+                    if (label) label.innerText = '1';
+                } else {
+                    targetBtn.classList.remove('capsule-1');
+                    targetBtn.classList.add('capsule-0');
+                    const label = targetBtn.querySelector('span');
+                    if (label) label.innerText = '0';
+                }
+            }
+
+            playSound('toggle');
+
+            // 檢查是否剛好湊齊目標數值
+            const sum = calculateCurrentSum(row.bits);
+            if (sum === row.target) {
+                // 正確達成目標：觸發 0.5 秒閃光並延遲消除！
+                triggerRowSuccess(row);
+            } else {
+                // 若未達成且需要更新「計: xx」輔助提示
+                if (GameState.showSumHelper) {
+                    const rowEl = document.getElementById(rowId);
+                    if (rowEl) {
+                        const hintEl = rowEl.querySelector('.text-slate-400');
+                        if (hintEl) hintEl.innerText = `計:${sum}`;
+                    }
+                }
+            }
+        }
+
+        // 答對時的 0.5 秒閃動與消除流程
+        function triggerRowSuccess(row) {
+            row.isClearing = true;
+            playSound('clear');
+
+            const rowEl = document.getElementById(row.id);
+            if (rowEl) {
+                // 套用翠綠金光流動閃動動畫
+                rowEl.classList.add('row-success-flash');
+            }
+
+            // 閃動 0.5 秒後執行消除與計分
+            setTimeout(() => {
+                eliminateRow(row.id, row.target);
+            }, 500);
+        }
+
+        function eliminateRow(rowId, targetValue) {
+            const index = GameState.rows.findIndex(r => r.id === rowId);
+            if (index === -1) return;
+
+            // 移除該列
+            GameState.rows.splice(index, 1);
+
+            // 計分公式：單題得分 = 目標數值 + (關卡等級 × 20)
+            const earned = targetValue + (GameState.level * 20);
+            GameState.score += earned;
+            GameState.clearedLines++;
+
+            // 升級機制：每消除 5 列升 1 級
+            const newLevel = Math.floor(GameState.clearedLines / 5) + 1;
+            const levelUp = newLevel !== GameState.level;
+            if (levelUp) {
+                GameState.level = newLevel;
+            }
+
+            updateStatsDisplay();
+
+            // 高手速解防發呆機制：
+            // 若場上有效可解題目小於 2 列，立即從底端秒補新題目，毋須枯等週期倒數！
+            let needReplenish = false;
+            while (GameState.rows.filter(r => !r.isClearing).length < 2 && !GameState.isGameOver) {
+                spawnNewRow();
+                needReplenish = true;
+            }
+
+            if (needReplenish || levelUp) {
+                // 重設生成計時器，避免秒補後又立刻疊上常規題
+                resetSpawnTimer();
+            } else {
+                renderRows();
+            }
+        }
+
+        function openKeypad(rowId) {
+            if (GameState.isGameOver || GameState.isPaused) return;
+            const row = GameState.rows.find(r => r.id === rowId);
+            if (!row) return;
+
+            GameState.activeInputRowId = rowId;
+            GameState.currentKeypadValue = '';
+
+            const bitStr = row.bits.join('');
+            const keypadBitHint = document.getElementById('keypadBitHint');
+            const keypadScreen = document.getElementById('keypadScreen');
+
+            if (keypadBitHint) keypadBitHint.innerText = bitStr;
+            if (keypadScreen) keypadScreen.innerText = '0';
+
+            const modal = document.getElementById('glassKeypad');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeKeypad() {
+            GameState.activeInputRowId = null;
+            GameState.currentKeypadValue = '';
+            const modal = document.getElementById('glassKeypad');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function appendKeypad(digit) {
+            if (GameState.currentKeypadValue.length >= 4) return;
+            GameState.currentKeypadValue += digit;
+            updateKeypadDisplay();
+        }
+
+        function backspaceKeypad() {
+            GameState.currentKeypadValue = GameState.currentKeypadValue.slice(0, -1);
+            updateKeypadDisplay();
+        }
+
+        function clearKeypad() {
+            GameState.currentKeypadValue = '';
+            updateKeypadDisplay();
+        }
+
+        function updateKeypadDisplay() {
+            const screen = document.getElementById('keypadScreen');
+            if (screen) {
+                screen.innerText = GameState.currentKeypadValue === '' ? '0' : GameState.currentKeypadValue;
+            }
+        }
+
+        function submitKeypad() {
+            if (!GameState.activeInputRowId) return;
+            const row = GameState.rows.find(r => r.id === GameState.activeInputRowId);
+            if (!row) {
+                closeKeypad();
+                return;
+            }
+
+            const enteredVal = parseInt(GameState.currentKeypadValue, 10);
+            if (enteredVal === row.target) {
+                // 解碼正確！
+                const targetRow = row;
+                closeKeypad();
+                triggerRowSuccess(targetRow);
+            } else {
+                // 輸入錯誤：震動警示與錯誤音效
+                playSound('error');
+                const screen = document.getElementById('keypadScreen');
+                if (screen) {
+                    screen.classList.add('text-rose-400');
+                    setTimeout(() => screen.classList.remove('text-rose-400'), 300);
+                }
+                clearKeypad();
+            }
+        }
+
+        // 綁定小算盤按鈕點擊事件
+        document.querySelectorAll('.keypad-btn[data-key]').forEach(btn => {
+            btn.onclick = () => appendKeypad(btn.getAttribute('data-key'));
+        });
+        const btnKeypadClear = document.getElementById('btnKeypadClear');
+        if (btnKeypadClear) btnKeypadClear.onclick = clearKeypad;
+
+        const btnKeypadBackspace = document.getElementById('btnKeypadBackspace');
+        if (btnKeypadBackspace) btnKeypadBackspace.onclick = backspaceKeypad;
+
+        const btnKeypadCancel = document.getElementById('btnKeypadCancel');
+        if (btnKeypadCancel) btnKeypadCancel.onclick = closeKeypad;
+
+        const btnKeypadCloseX = document.getElementById('btnKeypadCloseX');
+        if (btnKeypadCloseX) btnKeypadCloseX.onclick = closeKeypad;
+
+        const btnKeypadSubmit = document.getElementById('btnKeypadSubmit');
+        if (btnKeypadSubmit) btnKeypadSubmit.onclick = submitKeypad;
+
+        // 實體鍵盤監聽支援
+        window.addEventListener('keydown', (e) => {
+            if (GameState.activeInputRowId) {
+                if (e.key >= '0' && e.key <= '9') {
+                    appendKeypad(e.key);
+                } else if (e.key === 'Backspace') {
+                    backspaceKeypad();
+                } else if (e.key === 'Enter') {
+                    submitKeypad();
+                } else if (e.key === 'Escape') {
+                    closeKeypad();
+                }
+            }
+        });
+
+        function triggerGameOver() {
+            GameState.isGameOver = true;
+            if (GameState.nextSpawnTimer) clearInterval(GameState.nextSpawnTimer);
+            stopGameTimer();
+            closeKeypad();
+            playSound('error');
+
+            const finalScore = document.getElementById('finalScore');
+            const finalLevel = document.getElementById('finalLevel');
+            const finalLines = document.getElementById('finalLines');
+            const finalMode = document.getElementById('finalMode');
+            const finalTime = document.getElementById('finalTime');
+            const modalGameOver = document.getElementById('modalGameOver');
+
+            if (finalScore) finalScore.innerText = GameState.score;
+            if (finalLevel) finalLevel.innerText = GameState.level;
+            if (finalLines) finalLines.innerText = GameState.clearedLines;
+            if (finalMode) finalMode.innerText = MODE_NAMES[GameState.mode] || GameState.mode;
+            if (finalTime) finalTime.innerText = formatTime(GameState.elapsedSeconds);
+
+            if (modalGameOver) {
+                modalGameOver.classList.remove('hidden');
+                modalGameOver.classList.add('flex');
+            }
+        }
+
+        function updateStatsDisplay() {
+            const statScore = document.getElementById('statScore');
+            const statLevel = document.getElementById('statLevel');
+            const statTime = document.getElementById('statTime');
+
+            if (statScore) statScore.innerText = GameState.score;
+            if (statLevel) statLevel.innerText = GameState.level;
+            if (statTime) statTime.innerText = formatTime(GameState.elapsedSeconds);
+        }
+
+        function applyModeUI() {
+            const lockedModeName = document.getElementById('lockedModeName');
+            const gameplayDesc = document.getElementById('gameplayDesc');
+
+            let lockedText = '雙向混合';
+            let descText = '雙向混合：隨機給出十進制目標或二進制解碼';
+
+            if (GameState.mode === 'HYBRID') {
+                lockedText = '雙向混合';
+                descText = '雙向混合：隨機給出十進制目標或二進制解碼';
+            } else if (GameState.mode === 'MATCH') {
+                lockedText = '點選二進制';
+                descText = '點選位元膠囊(0/1)組合出右側十進制目標數字';
+            } else if (GameState.mode === 'DECODE') {
+                lockedText = '輸入十進制';
+                descText = '觀察二進制點擊「???」開啟浮動小算盤輸入十進制數字';
+            }
+
+            if (lockedModeName) lockedModeName.innerText = lockedText;
+            if (gameplayDesc) gameplayDesc.innerText = descText;
+        }
+
+        function startNewGame() {
+            initAudio();
+            GameState.hasStarted = true;
+            GameState.score = 0;
+            GameState.level = 1;
+            GameState.clearedLines = 0;
+            GameState.elapsedSeconds = 0;
+            GameState.isPaused = false;
+            GameState.isGameOver = false;
+            GameState.pausedByHelp = false;
+            GameState.rows = [];
+
+            applyModeUI();
+            closeKeypad();
+            updateStatsDisplay();
+            startGameTimer();
+
+            // 關閉所有彈窗
+            ['modalStart', 'modalGameOver', 'modalPause', 'modalHelp'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+            });
+
+            // 初始在底端生成 2 行題目開始防守
+            spawnNewRow();
+            spawnNewRow();
+
+            resetSpawnTimer();
+        }
+
+        function togglePause() {
+            if (!GameState.hasStarted || GameState.isGameOver) return;
+            GameState.isPaused = !GameState.isPaused;
+
+            const modal = document.getElementById('modalPause');
+            if (GameState.isPaused) {
+                if (GameState.nextSpawnTimer) clearInterval(GameState.nextSpawnTimer);
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }
+            } else {
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+                resetSpawnTimer();
+            }
+        }
+
+        // 開啟說明視窗 (若正在遊戲中則自動暫停)
+        function openHelpModal() {
+            initAudio();
+            const modalHelp = document.getElementById('modalHelp');
+            if (GameState.hasStarted && !GameState.isPaused && !GameState.isGameOver) {
+                GameState.pausedByHelp = true;
+                GameState.isPaused = true;
+                if (GameState.nextSpawnTimer) clearInterval(GameState.nextSpawnTimer);
+            }
+            if (modalHelp) {
+                modalHelp.classList.remove('hidden');
+                modalHelp.classList.add('flex');
+            }
+        }
+
+        // 關閉說明視窗 (若因說明而暫停則自動恢復遊戲)
+        function closeHelpModal() {
+            const modalHelp = document.getElementById('modalHelp');
+            if (modalHelp) {
+                modalHelp.classList.add('hidden');
+                modalHelp.classList.remove('flex');
+            }
+
+            if (GameState.pausedByHelp) {
+                GameState.pausedByHelp = false;
+                GameState.isPaused = false;
+                resetSpawnTimer();
+            }
+        }
+
+        // 模式切換按鈕事件
+        document.querySelectorAll('.mode-select-btn').forEach(btn => {
+            btn.onclick = () => {
+                const selected = btn.getAttribute('data-mode');
+                GameState.mode = selected;
+
+                document.querySelectorAll('.mode-select-btn').forEach(b => {
+                    b.classList.remove('border-2', 'border-sky-400', 'bg-sky-950/60', 'text-white', 'shadow');
+                    b.classList.add('border', 'border-slate-700', 'bg-slate-800/80', 'text-slate-300');
+                });
+                btn.classList.remove('border', 'border-slate-700', 'bg-slate-800/80', 'text-slate-300');
+                btn.classList.add('border-2', 'border-sky-400', 'bg-sky-950/60', 'text-white', 'shadow');
+            };
+        });
+
+        function bindEvent(id, event, handler) {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, handler);
+        }
+
+        bindEvent('btnStartGame', 'click', () => startNewGame());
+        bindEvent('btnStartHelp', 'click', () => openHelpModal());
+        bindEvent('btnPause', 'click', togglePause);
+        bindEvent('btnResume', 'click', togglePause);
+        bindEvent('btnRestartFromPause', 'click', startNewGame);
+        bindEvent('btnRestartGame', 'click', startNewGame);
+        bindEvent('btnHelp', 'click', openHelpModal);
+        bindEvent('btnHelpClose', 'click', closeHelpModal);
+
+        // 音效切換開關
+        const soundBtn = document.getElementById('btnSound');
+        const soundLabel = document.getElementById('soundLabel');
+        if (soundBtn) {
+            soundBtn.onclick = () => {
+                GameState.soundEnabled = !GameState.soundEnabled;
+                if (soundLabel) soundLabel.innerText = GameState.soundEnabled ? '🔊' : '🔇';
+            };
+        }
+
+        // 輔助指示勾選
+        const chkShowSum = document.getElementById('chkShowSum');
+        if (chkShowSum) {
+            chkShowSum.onchange = (e) => {
+                GameState.showSumHelper = e.target.checked;
+                renderRows();
+            };
+        }
+
+        // 頁面初次載入
+        window.onload = () => {
+            applyModeUI();
+            updateStatsDisplay();
+        };
+    </script>
+</body>
+</html>
